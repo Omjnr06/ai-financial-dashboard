@@ -1,0 +1,18 @@
+# VSCode Stuff
+.vscode/
+.idea/
+.DS_Store
+
+# python stuff
+.venv/
+__pycache__/
+*.pyc
+
+# env
+.env
+.env.local
+*.env
+
+# node
+node_modules/
+.next/
