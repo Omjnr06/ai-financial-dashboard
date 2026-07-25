@@ -31,6 +31,7 @@ class Profiles(SQLModel, table = True):
     id: str = Field(default_factory = uid,primary_key = True)
     userId: str = Field(index = True,unique = True) # this is where better auth points to
     timezone: str = Field(default = "America/Toronto")
+    layoutId: str = Field(default="horizontal")
     themeId: str = Field(default = "midnight")
     createdAt: datetime = Field(default_factory = nowUtc)
 

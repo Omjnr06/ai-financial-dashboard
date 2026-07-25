@@ -35,7 +35,7 @@ export const auth = betterAuth({
         after: async (user) => {
           await pool.query(
             'INSERT INTO profiles (id, "userId", timezone, "themeId", "createdAt") VALUES ($1, $2, $3, $4, $5)',
-            [randomUUID(), user.id, "America/Toronto", "midnight", new Date()]
+            [randomUUID(), user.id, "America/Toronto", "midnight","horizontal", new Date()]
           );
         },
         },
