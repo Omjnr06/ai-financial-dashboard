@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from app.dependencies import get_current_user
+from fastapi import Depends
 
 origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
@@ -21,3 +23,6 @@ app.add_middleware(
 def health():
     return {"status": "ok"}
 
+@app.get("/api/me")
+def me(user_id: str = Depends(get_current_user)):
+    return {"user_id": user_id}

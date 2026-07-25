@@ -16,3 +16,6 @@ __pycache__/
 # node
 node_modules/
 .next/
+
+# Test Files
+cookies.txt
