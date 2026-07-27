@@ -7,6 +7,10 @@ class Settings(BaseSettings):
     )
 
     DATABASE_URL: str
+    PLAID_CLIENT_ID: str
+    PLAID_CLIENT_SECRET: str
+    PLAID_ENV: str = "sandbox"
+    TOKEN_ENCRYPTION_KEY: str
 
 
 settings = Settings()

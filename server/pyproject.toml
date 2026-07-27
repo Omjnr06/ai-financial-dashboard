@@ -6,7 +6,9 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.18.5",
+    "cryptography>=49.0.0",
     "fastapi[standard]>=0.139.2",
+    "plaid-python>=42.0.0",
     "psycopg2-binary>=2.9.12",
     "pydantic-settings>=2.14.2",
     "sqlmodel>=0.0.39",
