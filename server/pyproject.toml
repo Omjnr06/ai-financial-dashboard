@@ -11,5 +11,6 @@ dependencies = [
     "plaid-python>=42.0.0",
     "psycopg2-binary>=2.9.12",
     "pydantic-settings>=2.14.2",
+    "pyjwt>=2.13.0",
     "sqlmodel>=0.0.39",
 ]

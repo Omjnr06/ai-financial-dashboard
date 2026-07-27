@@ -4,6 +4,10 @@ import os
 from app.dependencies import get_current_user
 from fastapi import Depends
 from app.routes.plaid import router as plaid_router
+import logging
+
+
+logging.basicConfig(level=logging.INFO)
 
 origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 

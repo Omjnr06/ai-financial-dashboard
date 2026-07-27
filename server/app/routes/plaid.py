@@ -1,18 +1,20 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 from pydantic import BaseModel
-
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
 from plaid.model.accounts_get_request import AccountsGetRequest
 from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
-
 from app.plaid_client import plaid_client, encrypt_token
 from app.dependencies import get_current_user
 from app.database import get_session
 from app.models import PlaidItem, Accounts, Status, Type
+from fastapi import Request
+import logging
+from fastapi import Request, HTTPException
+from app.plaid_webhook_verify import verify_webhook
 
 router = APIRouter(prefix="/api/plaid", tags=["plaid"])
 
@@ -109,5 +111,30 @@ def exchange_public_token(
             currentBalanceToCent=int(round(balance * 100)),
         ))
     db.commit()
-
     return ExchangeResponse(success=True, institutionName=institution_name)
+
+
+
+logger = logging.getLogger(__name__)
+@router.post(
+    "/webhook",
+    summary="Receive Plaid webhooks",
+    response_description="Acknowledges receipt",
+)
+async def plaid_webhook(request: Request):
+    """Receives and verifies webhooks from Plaid."""
+    raw_body = await request.body()
+    verification_header = request.headers.get("plaid-verification", "")
+    if not verify_webhook(raw_body, verification_header):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    payload = await request.json()
+    webhook_type = payload.get("webhook_type")
+    webhook_code = payload.get("webhook_code")
+    item_id = payload.get("item_id")
+    print(f"Verified webhook: type={webhook_type} code={webhook_code} item={item_id}")
+
+    # TODO (J10): if transactions webhook, trigger ingestion
+    return {"acknowledged": True}
+
+
