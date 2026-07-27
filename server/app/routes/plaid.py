@@ -1,22 +1,24 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlmodel import Session
 from pydantic import BaseModel
+import logging
+
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
 from plaid.model.accounts_get_request import AccountsGetRequest
 from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
+
 from app.plaid_client import plaid_client, encrypt_token
 from app.dependencies import get_current_user
 from app.database import get_session
 from app.models import PlaidItem, Accounts, Status, Type
-from fastapi import Request
-import logging
-from fastapi import Request, HTTPException
 from app.plaid_webhook_verify import verify_webhook
+from app.ingestion import sync_transactions
 
 router = APIRouter(prefix="/api/plaid", tags=["plaid"])
+logger = logging.getLogger(__name__)
 
 
 class LinkTokenResponse(BaseModel):
@@ -115,14 +117,24 @@ def exchange_public_token(
 
 
 
-logger = logging.getLogger(__name__)
 @router.post(
     "/webhook",
     summary="Receive Plaid webhooks",
     response_description="Acknowledges receipt",
 )
 async def plaid_webhook(request: Request):
-    """Receives and verifies webhooks from Plaid."""
+    """
+    Receive and process webhooks from Plaid.
+
+    Every request is verified against Plaid's JWT signature before anything in
+    the payload is trusted — unsigned or invalid requests are rejected with 401.
+
+    For `TRANSACTIONS` webhooks, this triggers a cursor-based sync that pulls
+    the item's transaction changes from Plaid and applies them to the database:
+    new transactions are inserted, settled/changed ones are updated in place,
+    and removed ones are deleted. The cursor makes this **idempotent** — repeated
+    webhooks never double-count.
+    """
     raw_body = await request.body()
     verification_header = request.headers.get("plaid-verification", "")
     if not verify_webhook(raw_body, verification_header):
@@ -134,7 +146,13 @@ async def plaid_webhook(request: Request):
     item_id = payload.get("item_id")
     print(f"Verified webhook: type={webhook_type} code={webhook_code} item={item_id}")
 
-    # TODO (J10): if transactions webhook, trigger ingestion
+    if webhook_type == "TRANSACTIONS":
+        from app.database import engine
+        with Session(engine) as db:
+            result = sync_transactions(db, item_id)
+            # for dev, to be changed to logger later by me
+            print(f"Sync result: {result}")
+
     return {"acknowledged": True}
 
 
