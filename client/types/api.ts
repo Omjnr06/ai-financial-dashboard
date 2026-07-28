@@ -19,3 +19,20 @@ export interface PlaidStatus {
 
 }
 
+// Bill API shape
+export interface Bill {
+  id: string;
+  name: string;
+  amountToCent: number;
+  dueDay: number;
+  isAuto: boolean;
+  active: boolean;
+}
+
+// Bill Req Api Shape
+export interface BillCreate {
+  name: string;
+  amountToCent: number;
+  dueDay: number;
+}
+

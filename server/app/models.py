@@ -86,6 +86,20 @@ class Bucket(SQLModel, table = True):
     targetDate: date |  None = Field(default=None) # nullable
     createdAt: datetime = Field(default_factory = nowUtc)
 
+class Bills(SQLModel,table = True):
+    __tablename__= "bills"
+    id: str = Field(default_factory = uid, primary_key = True)
+    userId: str = Field(index = True)
+    name: str
+    amountToCent: int
+    dueDay: int # day of the month from 1 - 31
+    isAuto: bool = Field(default=False)
+    active: bool = Field(default=True)
+    createdAt: datetime = Field(default_factory = nowUtc)
+    
+
+
+
 
      
 

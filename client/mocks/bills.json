@@ -1,0 +1,5 @@
+[
+  { "id": "bill-1", "name": "Rent", "amountToCent": 140000, "dueDay": 1, "isAuto": false, "active": true },
+  { "id": "bill-2", "name": "Spotify", "amountToCent": 1099, "dueDay": 15, "isAuto": false, "active": true },
+  { "id": "bill-3", "name": "Phone", "amountToCent": 6500, "dueDay": 20, "isAuto": false, "active": true }
+]

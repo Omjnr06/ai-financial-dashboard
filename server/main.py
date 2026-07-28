@@ -3,9 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from app.dependencies import get_current_user
 from fastapi import Depends
-from app.routes.plaid import router as plaid_router
 import logging
+from app.routes.plaid import router as plaid_router
+from app.routes.bills import router as bills_router
 
+# to run locally
+# uv run uvicorn main:app --reload
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,3 +38,4 @@ def me(user_id: str = Depends(get_current_user)):
 
 # plaid api routes 
 app.include_router(plaid_router)
+app.include_router(bills_router)
