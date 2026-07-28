@@ -1,10 +1,16 @@
 import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 import { randomUUID } from "crypto";
+import { Resend } from "resend";
+
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL }); 
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
+const resendFromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
 
 export const auth = betterAuth({
+
 
 // to manage auth tables in db
   database: pool,
@@ -13,6 +19,26 @@ export const auth = betterAuth({
   emailAndPassword:{
     enabled: true,
     minPasswordLength: 8,
+  },
+
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      if (!resend) {
+        throw new Error("RESEND_API_KEY is not configured.");
+      }
+
+      const response = await resend.emails.send({
+        from: resendFromEmail,
+        to: user.email,
+        subject: "Verify your email — The Vault",
+        html: `<p>Click below to verify your email:</p><p><a href="${url}">${url}</a></p>`,
+      });
+
+      if (response.error) {
+        throw new Error(`Resend email failed: ${response.error.message}`);
+      }
+    },
+    sendOnSignUp: true,
   },
 
   user: { 
@@ -34,7 +60,7 @@ export const auth = betterAuth({
         // creates the matching app profile right after a ba_user is made
         after: async (user) => {
           await pool.query(
-            'INSERT INTO profiles (id, "userId", timezone, "themeId", "createdAt") VALUES ($1, $2, $3, $4, $5)',
+            'INSERT INTO profiles (id, "userId", timezone, "themeId", "layoutId", "createdAt") VALUES ($1, $2, $3, $4, $5, $6)',
             [randomUUID(), user.id, "America/Toronto", "midnight","horizontal", new Date()]
           );
         },
