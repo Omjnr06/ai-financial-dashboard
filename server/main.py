@@ -6,6 +6,7 @@ from fastapi import Depends
 import logging
 from app.routes.plaid import router as plaid_router
 from app.routes.bills import router as bills_router
+from app.routes.dashboard import router as dashboard_router
 
 # to run locally
 # uv run uvicorn main:app --reload
@@ -38,4 +39,9 @@ def me(user_id: str = Depends(get_current_user)):
 
 # plaid api routes 
 app.include_router(plaid_router)
+
+# bills routes
 app.include_router(bills_router)
+
+# dashboard routes
+app.include_router(dashboard_router)

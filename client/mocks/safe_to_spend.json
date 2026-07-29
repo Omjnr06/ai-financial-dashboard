@@ -1,0 +1,7 @@
+{
+  "safeToSpendCent": 80000,
+  "balanceCent": 570000,
+  "upcomingBillsCent": 140000,
+  "goalAllocationsCent": 310000,
+  "thresholdCent": 40000
+}

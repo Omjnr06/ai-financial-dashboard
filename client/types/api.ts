@@ -36,3 +36,12 @@ export interface BillCreate {
   dueDay: number;
 }
 
+// safe to spend response shape
+export interface SafeToSpend {
+  safeToSpendCent: number;
+  balanceCent: number;
+  upcomingBillsCent: number;
+  goalAllocationsCent: number;
+  thresholdCent: number;
+}
+
