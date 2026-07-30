@@ -190,7 +190,7 @@ export default function SignUpPage() {
             disabled={isSubmitting}
           />
 
-          {/* Submit button */}
+          {/* Submit button (includes loading UI) */}
           <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
             {isSubmitting ? "Creating account..." : "Sign Up"}
           </Button>
