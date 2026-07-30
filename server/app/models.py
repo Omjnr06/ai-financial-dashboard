@@ -33,6 +33,7 @@ class Profiles(SQLModel, table = True):
     timezone: str = Field(default = "America/Toronto")
     layoutId: str = Field(default="horizontal")
     themeId: str = Field(default = "midnight")
+    safeToSpendThresholdCent: int = Field(default=0) 
     createdAt: datetime = Field(default_factory = nowUtc)
 
 # each transaction or "item" in plaid
@@ -44,6 +45,7 @@ class PlaidItem(SQLModel, table=True):
     itemId: str = Field(index = True,unique = True)
     instituionName: str | None = Field(default = None) # nullable
     status: Status
+    cursor: str | None = Field(default=None)
     createdAt: datetime = Field(default_factory = nowUtc)
 
 # connection to bank (shows credit, chequing, savings etc)
@@ -84,6 +86,20 @@ class Bucket(SQLModel, table = True):
     currentToCent: int
     targetDate: date |  None = Field(default=None) # nullable
     createdAt: datetime = Field(default_factory = nowUtc)
+
+class Bills(SQLModel,table = True):
+    __tablename__= "bills"
+    id: str = Field(default_factory = uid, primary_key = True)
+    userId: str = Field(index = True)
+    name: str
+    amountToCent: int
+    dueDay: int # day of the month from 1 - 31
+    isAuto: bool = Field(default=False)
+    active: bool = Field(default=True)
+    createdAt: datetime = Field(default_factory = nowUtc)
+    
+
+
 
 
      
