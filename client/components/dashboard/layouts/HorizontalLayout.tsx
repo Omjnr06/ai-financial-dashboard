@@ -1,66 +1,70 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { Home, ArrowLeftRight, PiggyBank, Settings, LayoutGrid, MessageSquare } from "lucide-react";
+import { ReactNode } from "react";
+import { Home, ArrowLeftRight, PiggyBank, Settings, MessageSquare, LayoutGrid } from "lucide-react";
 import { useThemeStore } from "@/stores/useThemeStore";
 
 interface HorizontalLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
   onOpenChat: () => void;
 }
 
 export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps) {
-  const { setLayout } = useThemeStore();
+  const setLayout = useThemeStore((s) => s.setLayout);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-surface via-surface to-accent/5 text-text-primary p-4 md:p-8 space-y-6">
-      <header className="flex items-center justify-between max-w-350 mx-auto">
-        <h1 className="font-kumar text-3xl md:text-4xl tracking-widest text-text-primary">
-          The Vault
-        </h1>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onOpenChat}
-            aria-label="Open AI Chat"
-            className="p-2 rounded-full bg-surface-raised border border-border-subtle hover:border-accent transition-colors"
+    <div className="min-h-screen bg-surface">
+      <div className="max-w-[1600px] mx-auto px-8 py-8">
+        <header className="flex items-center justify-between mb-8">
+          <h1
+            className="text-4xl text-text-primary tracking-wide"
+            style={{ fontFamily: "var(--font-kumar)" }}
           >
-            <MessageSquare className="w-5 h-5 text-accent" />
-          </button>
-          <button
-            onClick={() => setLayout("vertical")}
-            aria-label="Switch to Vertical Layout"
-            className="p-2 rounded-full bg-surface-raised border border-border-subtle hover:border-accent transition-colors text-text-muted hover:text-text-primary text-xs flex items-center gap-1.5"
-          >
-            <LayoutGrid className="w-4 h-4" />
-            <span className="hidden md:inline">Vertical Rail</span>
-          </button>
-        </div>
-      </header>
+            The Vault
+          </h1>
 
-      <nav className="flex justify-center max-w-350 mx-auto">
-        <div className="flex items-center gap-2 md:gap-6 bg-surface-raised border border-border-subtle px-6 py-3 rounded-full shadow-lg">
-          <Link href="/dashboard" className="flex items-center gap-2 text-accent font-semibold text-sm">
-            <Home className="w-4 h-4" />
-            <span className="font-kumar">Home</span>
-          </Link>
-          <Link href="/transactions" className="flex items-center gap-2 text-text-muted hover:text-text-primary text-sm transition-colors">
-            <ArrowLeftRight className="w-4 h-4" />
-            <span className="font-kumar">Transactions</span>
-          </Link>
-          <Link href="/savings" className="flex items-center gap-2 text-text-muted hover:text-text-primary text-sm transition-colors">
-            <PiggyBank className="w-4 h-4" />
-            <span className="font-kumar">Savings</span>
-          </Link>
-          <Link href="/settings" className="flex items-center gap-2 text-text-muted hover:text-text-primary text-sm transition-colors">
-            <Settings className="w-4 h-4" />
-            <span className="font-kumar">Settings</span>
-          </Link>
-        </div>
-      </nav>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setLayout("vertical")}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-raised border border-border-subtle text-text-muted hover:text-text-primary text-sm transition"
+            >
+              <LayoutGrid size={16} />
+              Vertical Rail
+            </button>
+            <button
+              onClick={onOpenChat}
+              aria-label="Open chat"
+              className="w-10 h-10 rounded-full bg-surface-raised border border-border-subtle flex items-center justify-center text-accent hover:bg-accent/10 transition"
+            >
+              <MessageSquare size={18} />
+            </button>
+          </div>
+        </header>
 
-      <main className="max-w-350 mx-auto w-full">{children}</main>
+        <nav className="flex justify-center mb-8">
+          <div className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded-full px-3 py-2">
+            <NavItem icon={<Home size={18} />} label="Home" active />
+            <NavItem icon={<ArrowLeftRight size={18} />} label="Transactions" />
+            <NavItem icon={<PiggyBank size={18} />} label="Savings" />
+            <NavItem icon={<Settings size={18} />} label="Settings" />
+          </div>
+        </nav>
+
+        {children}
+      </div>
     </div>
+  );
+}
+
+function NavItem({ icon, label, active }: { icon: ReactNode; label: string; active?: boolean }) {
+  return (
+    <button
+      className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm transition ${
+        active ? "bg-accent text-surface" : "text-text-muted hover:text-text-primary"
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }

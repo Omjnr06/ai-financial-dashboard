@@ -42,7 +42,17 @@ export function SafeToSpendHeroTile({ data, bills, isLoading, error }: HeroTileP
   const hasNoBills = bills.length === 0;
 
   return (
-    <div className="bg-surface-raised rounded-3xl p-6 md:p-8 border border-border-subtle flex flex-col justify-between relative overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
+    <div className="bg-surface-raised rounded-3xl p-6 md:p-8 border border-border-subtle flex flex-col justify-start relative overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
+        <div
+        className="absolute -top-24 -left-24 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, var(--accent) 0%, transparent 70%)",
+          width: "450px",
+          height: "300px",
+          opacity: 0.18,
+          filter: "blur(70px)",
+        }}
+      />
       <div className="flex items-center justify-between gap-4">
         <span className="text-text-muted text-sm tracking-wide">
           Safe to spend - {timeframe}
@@ -76,6 +86,19 @@ export function SafeToSpendHeroTile({ data, bills, isLoading, error }: HeroTileP
               {formatCents(data.balanceCent)}
             </span>
           </div>
+            <div className="mt-5">
+            <div className="h-2 rounded-full bg-surface overflow-hidden">
+            <div
+                className="h-full rounded-full bg-accent transition-all"
+                style={{
+                width: `${Math.min(100, Math.max(0, (calculatedSafeToSpend / (data.balanceCent || 1)) * 100))}%`,
+                }}
+            />
+            </div>
+            <p className="text-text-muted text-xs mt-2">
+            {Math.round((calculatedSafeToSpend / (data.balanceCent || 1)) * 100)}% of your balance is safe to spend
+            </p>
+        </div>
           <div>
             Threshold -{" "}
             <span className="text-text-primary font-medium tabular-nums">
@@ -104,11 +127,6 @@ export function SafeToSpendHeroTile({ data, bills, isLoading, error }: HeroTileP
             <ChevronDown className="w-4 h-4" />
           </motion.div>
         </button>
-
-        <div className="flex items-center gap-1 text-xs font-bold tracking-wider text-text-muted">
-          <span>OPEN</span>
-          <ArrowUpRight className="w-4 h-4 text-accent" />
-        </div>
       </div>
 
       <AnimatePresence>

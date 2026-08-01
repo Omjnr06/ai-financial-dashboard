@@ -36,7 +36,7 @@ export function LastTransactionsTile({ transactions, isLoading }: LastTransactio
   };
 
   return (
-    <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle flex flex-col justify-between h-full min-h-35 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
+    <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle flex flex-col justify-start min-h-35 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
       <div className="flex items-center justify-between text-text-muted text-xs tracking-wide">
         <span>last transaction(s):</span>
         <ArrowLeftRight className="w-4 h-4 text-accent" />

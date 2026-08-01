@@ -18,6 +18,7 @@ import { SearchAskChatTile } from "@/components/dashboard/tiles/SearchAskChatTil
 import { SavingsBucketsTile } from "@/components/dashboard/tiles/SavingBucketsTile";
 import { HabitAnalysisTile } from "@/components/dashboard/tiles/HabitAnalysisTile";
 import { SpendingGraphsTile } from "@/components/dashboard/tiles/SpendingGraphsTile";
+import { BillsTile } from "@/components/dashboard/tiles/BillsTile";
 
 // Drawer
 import { SlideOverChat } from "@/components/dashboard/SlideOverChat";
@@ -94,33 +95,27 @@ export default function DashboardPage() {
   // Dynamically select the layout wrapper based on the Zustand store
   const LayoutWrapper = layoutId === "vertical" ? VerticalLayout : HorizontalLayout;
 
-  return (
+ return (
     <LayoutWrapper onOpenChat={() => handleOpenChatWithQuery()}>
       {layoutId === "horizontal" ? (
-        /* --- HORIZONTAL BENTO GRID (Updated asymmetric layout) --- */
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-min">
-          
-          {/* ROW 1 */}
-          <div className="md:col-span-2">
+        <div className="flex flex-col md:flex-row gap-6">
+
+          {/* LEFT COLUMN — hero + graph */}
+          <div className="flex-1 min-w-0 space-y-6">
             <SafeToSpendHeroTile
               data={safeToSpend}
               bills={bills}
               isLoading={isLoading}
               error={hasError}
-            />
-          </div>
-          <div className="space-y-6 flex flex-col justify-between">
-            <LastTransactionsTile transactions={transactions} isLoading={isLoading} />
-            <SearchAskChatTile onOpenChat={handleOpenChatWithQuery} />
+            />  
+              <SpendingGraphsTile isLoading={isLoading} />
           </div>
 
-          {/* ROW 2 */}
-          <div className="md:col-span-2 flex">
-            <div className="w-full min-h-80">
-              <SpendingGraphsTile isLoading={isLoading} />
-            </div>
-          </div>
-          <div className="space-y-6 flex flex-col justify-between">
+          {/* RIGHT COLUMN — summary tiles stack */}
+          <div className="w-full md:w-95 space-y-6">
+            <LastTransactionsTile transactions={transactions} isLoading={isLoading} />
+            <SearchAskChatTile onOpenChat={handleOpenChatWithQuery} />
+            <BillsTile bills={bills} />
             <HabitAnalysisTile isLoading={isLoading} />
             <SavingsBucketsTile buckets={buckets} isLoading={isLoading} />
           </div>
@@ -149,7 +144,7 @@ export default function DashboardPage() {
                <SpendingGraphsTile isLoading={isLoading} />
             </div>
           </div>
-          <div className="space-y-6 flex flex-col justify-between">
+          <div className="space-y-6 flex flex-col justify-start">
             <LastTransactionsTile transactions={transactions} isLoading={isLoading} />
             <HabitAnalysisTile isLoading={isLoading} />
           </div>
