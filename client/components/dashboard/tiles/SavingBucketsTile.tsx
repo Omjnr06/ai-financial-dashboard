@@ -18,7 +18,7 @@ interface SavingsBucketsTileProps {
 export function SavingsBucketsTile({ buckets, isLoading }: SavingsBucketsTileProps) {
   if (isLoading) {
     return (
-      <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle animate-pulse h-full min-h-[180px]">
+      <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle animate-pulse h-full min-h-45]">
         <div className="h-4 bg-surface rounded w-1/3 mb-4" />
         <div className="space-y-3">
           <div className="h-4 bg-surface rounded w-full" />
@@ -29,7 +29,7 @@ export function SavingsBucketsTile({ buckets, isLoading }: SavingsBucketsTilePro
   }
 
   return (
-    <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle flex flex-col justify-between h-full min-h-[180px] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
+    <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle flex flex-col justify-between h-full min-h-45] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
       <div className="flex items-center justify-between text-text-muted text-xs tracking-wide mb-3">
         <span>saving buckets</span>
         <PiggyBank className="w-4 h-4 text-accent" />

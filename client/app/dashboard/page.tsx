@@ -116,7 +116,7 @@ export default function DashboardPage() {
 
           {/* ROW 2 */}
           <div className="md:col-span-2 flex">
-            <div className="w-full min-h-[320px]">
+            <div className="w-full min-h-80">
               <SpendingGraphsTile isLoading={isLoading} />
             </div>
           </div>
@@ -145,7 +145,7 @@ export default function DashboardPage() {
 
           {/* ROW 2 */}
           <div className="md:col-span-2 flex">
-            <div className="w-full min-h-[320px]">
+            <div className="w-full min-h-80">
                <SpendingGraphsTile isLoading={isLoading} />
             </div>
           </div>

@@ -19,7 +19,7 @@ export function SafeToSpendHeroTile({ data, bills, isLoading, error }: HeroTileP
 
   if (isLoading) {
     return (
-      <div className="bg-surface-raised rounded-3xl p-6 md:p-8 animate-pulse flex flex-col justify-between h-full min-h-[220px] border border-border-subtle">
+      <div className="bg-surface-raised rounded-3xl p-6 md:p-8 animate-pulse flex flex-col justify-between h-full min-h-55 border border-border-subtle">
         <div className="h-4 bg-surface rounded w-1/3 mb-4" />
         <div className="h-16 bg-surface rounded w-1/2 mb-4" />
         <div className="h-4 bg-surface rounded w-2/3" />
@@ -29,7 +29,7 @@ export function SafeToSpendHeroTile({ data, bills, isLoading, error }: HeroTileP
 
   if (error || !data) {
     return (
-      <div className="bg-surface-raised rounded-3xl p-6 md:p-8 border border-border-subtle flex flex-col justify-center items-center text-center h-full min-h-[220px]">
+      <div className="bg-surface-raised rounded-3xl p-6 md:p-8 border border-border-subtle flex flex-col justify-center items-center text-center h-full min-h-55">
         <AlertCircle className="w-8 h-8 text-warning mb-2" />
         <p className="text-text-primary text-sm font-medium">Couldn't load Safe to Spend</p>
         <span className="text-text-muted text-xs mt-1">Check back in a moment</span>

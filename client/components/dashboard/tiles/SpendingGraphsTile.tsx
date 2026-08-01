@@ -10,7 +10,7 @@ interface SpendingGraphsTileProps {
 export function SpendingGraphsTile({ isLoading }: SpendingGraphsTileProps) {
   if (isLoading) {
     return (
-      <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle animate-pulse h-full min-h-[320px]">
+      <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle animate-pulse h-full min-h-80">
         <div className="h-4 bg-surface rounded w-1/3 mb-4" />
         <div className="h-48 bg-surface rounded w-full mt-8" />
       </div>
@@ -21,7 +21,7 @@ export function SpendingGraphsTile({ isLoading }: SpendingGraphsTileProps) {
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle flex flex-col justify-between h-full min-h-[320px] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent relative">
+    <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle flex flex-col justify-between h-full min-h-80 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent relative">
       <div className="flex items-center justify-between text-text-muted text-xs tracking-wide mb-6">
         <div className="flex items-center gap-2">
           <span>spending graphs</span>

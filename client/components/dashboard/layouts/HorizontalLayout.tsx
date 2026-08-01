@@ -14,8 +14,8 @@ export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps
   const { setLayout } = useThemeStore();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-surface via-surface to-accent/5 text-text-primary p-4 md:p-8 space-y-6">
-      <header className="flex items-center justify-between max-w-[1400px] mx-auto">
+    <div className="min-h-screen bg-linear-to-br from-surface via-surface to-accent/5 text-text-primary p-4 md:p-8 space-y-6">
+      <header className="flex items-center justify-between max-w-350 mx-auto">
         <h1 className="font-kumar text-3xl md:text-4xl tracking-widest text-text-primary">
           The Vault
         </h1>
@@ -39,7 +39,7 @@ export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps
         </div>
       </header>
 
-      <nav className="flex justify-center max-w-[1400px] mx-auto">
+      <nav className="flex justify-center max-w-350 mx-auto">
         <div className="flex items-center gap-2 md:gap-6 bg-surface-raised border border-border-subtle px-6 py-3 rounded-full shadow-lg">
           <Link href="/dashboard" className="flex items-center gap-2 text-accent font-semibold text-sm">
             <Home className="w-4 h-4" />
@@ -60,7 +60,7 @@ export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps
         </div>
       </nav>
 
-      <main className="max-w-[1400px] mx-auto w-full">{children}</main>
+      <main className="max-w-350 mx-auto w-full">{children}</main>
     </div>
   );
 }

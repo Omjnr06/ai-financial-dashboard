@@ -19,7 +19,7 @@ interface LastTransactionsTileProps {
 export function LastTransactionsTile({ transactions, isLoading }: LastTransactionsTileProps) {
   if (isLoading) {
     return (
-      <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle animate-pulse h-full min-h-[140px]">
+      <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle animate-pulse h-full min-h-35">
         <div className="h-4 bg-surface rounded w-1/2 mb-3" />
         <div className="h-6 bg-surface rounded w-3/4" />
       </div>
@@ -36,7 +36,7 @@ export function LastTransactionsTile({ transactions, isLoading }: LastTransactio
   };
 
   return (
-    <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle flex flex-col justify-between h-full min-h-[140px] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
+    <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle flex flex-col justify-between h-full min-h-35 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
       <div className="flex items-center justify-between text-text-muted text-xs tracking-wide">
         <span>last transaction(s):</span>
         <ArrowLeftRight className="w-4 h-4 text-accent" />
