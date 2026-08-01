@@ -14,6 +14,11 @@ const resendFromEmail =
   process.env.RESEND_FROM_EMAIL || "noreply@mail.magbadelojr.com";
 
 export const auth = betterAuth({
+    trustedOrigins: [
+    "http://localhost:3000",
+    "https://ai-financial-dashboard.vercel.app",
+    // to add custom domain after when bought
+  ],
   // manages auth tables in the db
   database: pool,
 
