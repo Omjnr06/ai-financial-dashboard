@@ -13,7 +13,8 @@ from plaid.model.country_code import CountryCode
 from app.plaid_client import plaid_client, encrypt_token
 from app.dependencies import get_current_user
 from app.database import get_session
-from app.models import PlaidItem, Accounts, Status, Type
+from app.models import PlaidItem, Accounts, Status
+from app.utils.account_types import normalize_account_type
 from app.plaid_webhook_verify import verify_webhook
 from app.ingestion import sync_transactions
 
@@ -101,16 +102,24 @@ def exchange_public_token(
     db.add(plaid_item)
     db.commit()
     db.refresh(plaid_item)
-    type_map = {"depository": Type.checking, "credit": Type.credit}
     for acct in accounts_resp["accounts"]:
-        balance = acct["balances"]["current"] or 0
+        balances = acct["balances"]
+        current = balances["current"] or 0
+        available = balances.get("available")
+        limit = balances.get("limit")
+        plaid_type = str(acct["type"])
+        plaid_subtype = str(acct["subtype"]) if acct.get("subtype") else None
         db.add(Accounts(
             userId=user_id,
             plaidItemId=plaid_item.id,
             plaidAccountId=acct["account_id"],
             name=acct["name"],
-            type=type_map.get(str(acct["type"]), Type.checking),
-            currentBalanceToCent=int(round(balance * 100)),
+            accountType=normalize_account_type(plaid_type, plaid_subtype),
+            plaidType=plaid_type,
+            plaidSubtype=plaid_subtype,
+            currentBalanceToCent=int(round(current * 100)),
+            availableBalanceToCent=int(round(available * 100)) if available is not None else None,
+            limitToCent=int(round(limit * 100)) if limit is not None else None,
         ))
     db.commit()
     return ExchangeResponse(success=True, institutionName=institution_name)

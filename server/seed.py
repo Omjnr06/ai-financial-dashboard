@@ -1,9 +1,10 @@
-
 import random
 from datetime import date, timedelta
 from sqlmodel import Session, delete
 from app.database import engine
-from app.models import Profiles, PlaidItem, Accounts, Transactions, Bucket, Status, Type
+from app.models import (
+    Profiles, PlaidItem, Accounts, Transactions, Bucket, Bills, Status, AccountType
+)
 
 
 TEST_USER_ID = "seed-user-0001"
@@ -32,31 +33,102 @@ AMOUNT_RANGES = {
 def seed():
     with Session(engine) as db:
         db.execute(delete(Transactions).where(Transactions.userId == TEST_USER_ID))
-        db.execute(delete(Accounts).where(Accounts.userId == TEST_USER_ID))
+        db.execute(delete(Bills).where(Bills.userId == TEST_USER_ID))
         db.execute(delete(Bucket).where(Bucket.userId == TEST_USER_ID))
+        db.execute(delete(Accounts).where(Accounts.userId == TEST_USER_ID))
         db.execute(delete(PlaidItem).where(PlaidItem.userId == TEST_USER_ID))
         db.execute(delete(Profiles).where(Profiles.userId == TEST_USER_ID))
         db.commit()
+
         db.add(Profiles(userId=TEST_USER_ID))
-        item = PlaidItem(
+
+        cibc = PlaidItem(
             userId=TEST_USER_ID,
             accessTokenEncrypted="seed-token-not-real",
-            itemId="seed-item-0001",
-            institutionName="Scotiabank",
+            itemId="seed-item-cibc",
+            institutionName="CIBC",
             status=Status.active,
         )
-        db.add(item)
-        db.commit()
-        account = Accounts(
+        wealthsimple = PlaidItem(
             userId=TEST_USER_ID,
-            plaidItemId=item.id,
-            plaidAccountId="seed-acct-0001",
-            name="Chequing",
-            type=Type.checking,
-            currentBalanceToCent=570000,  # $5,700
+            accessTokenEncrypted="seed-token-not-real",
+            itemId="seed-item-ws",
+            institutionName="Wealthsimple",
+            status=Status.active,
         )
-        db.add(account)
-        db.commit()  
+        nslsc = PlaidItem(
+            userId=TEST_USER_ID,
+            accessTokenEncrypted="seed-token-not-real",
+            itemId="seed-item-nslsc",
+            institutionName="NSLSC",
+            status=Status.active,
+        )
+        db.add(cibc)
+        db.add(wealthsimple)
+        db.add(nslsc)
+        db.commit()
+
+        chequing = Accounts(
+            userId=TEST_USER_ID,
+            plaidItemId=cibc.id,
+            plaidAccountId="seed-acct-chequing",
+            name="Chequing",
+            accountType=AccountType.spending,
+            plaidType="depository",
+            plaidSubtype="checking",
+            currentBalanceToCent=570000,
+            availableBalanceToCent=570000,
+        )
+        credit = Accounts(
+            userId=TEST_USER_ID,
+            plaidItemId=cibc.id,
+            plaidAccountId="seed-acct-credit",
+            name="Dividend Visa",
+            accountType=AccountType.credit,
+            plaidType="credit",
+            plaidSubtype="credit card",
+            currentBalanceToCent=120000,
+            availableBalanceToCent=180000,
+            limitToCent=300000,
+        )
+        savings = Accounts(
+            userId=TEST_USER_ID,
+            plaidItemId=wealthsimple.id,
+            plaidAccountId="seed-acct-savings",
+            name="Cash",
+            accountType=AccountType.savings,
+            plaidType="depository",
+            plaidSubtype="savings",
+            currentBalanceToCent=800000,
+            availableBalanceToCent=800000,
+        )
+        investment = Accounts(
+            userId=TEST_USER_ID,
+            plaidItemId=wealthsimple.id,
+            plaidAccountId="seed-acct-investment",
+            name="TFSA",
+            accountType=AccountType.investment,
+            plaidType="investment",
+            plaidSubtype="tfsa",
+            currentBalanceToCent=1200000,
+        )
+        loan = Accounts(
+            userId=TEST_USER_ID,
+            plaidItemId=nslsc.id,
+            plaidAccountId="seed-acct-loan",
+            name="Student Loan",
+            accountType=AccountType.loan,
+            plaidType="loan",
+            plaidSubtype="student",
+            currentBalanceToCent=1500000,
+        )
+        db.add(chequing)
+        db.add(credit)
+        db.add(savings)
+        db.add(investment)
+        db.add(loan)
+        db.commit()
+
         today = date.today()
         gap_month = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
         gap_month = (gap_month.replace(day=1) - timedelta(days=1)).replace(day=1)
@@ -72,7 +144,7 @@ def seed():
                 amount = random.randint(low, high)
                 db.add(Transactions(
                     userId=TEST_USER_ID,
-                    accountId=account.id,
+                    accountId=chequing.id,
                     plaidTransactionId=f"seed-txn-{days_ago}-{random.randint(1000,9999)}",
                     dateOf=day,
                     amountToCent=amount,
@@ -84,7 +156,7 @@ def seed():
 
         db.add(Transactions(
             userId=TEST_USER_ID,
-            accountId=account.id,
+            accountId=chequing.id,
             plaidTransactionId="seed-txn-outlier",
             dateOf=today - timedelta(days=10),
             amountToCent=120000,
@@ -96,15 +168,38 @@ def seed():
 
         db.add(Bucket(
             userId=TEST_USER_ID,
+            accountId=savings.id,
             name="MacBook Pro",
-            targetToCent=250000,   # $2,500
-            currentToCent=200000,  # 80%
+            targetToCent=250000,
+            currentToCent=200000,
         ))
         db.add(Bucket(
             userId=TEST_USER_ID,
+            accountId=savings.id,
             name="Emergency Fund",
-            targetToCent=500000,   # $5,000
-            currentToCent=25000,   # 5%
+            targetToCent=500000,
+            currentToCent=25000,
+        ))
+
+        db.add(Bills(
+            userId=TEST_USER_ID,
+            accountId=chequing.id,
+            name="Rent",
+            amountToCent=140000,
+            dueDay=1,
+            isAuto=False,
+            active=True,
+        ))
+        db.add(Bills(
+            userId=TEST_USER_ID,
+            accountId=chequing.id,
+            name="Spotify",
+            rawName="SPOTIFY P0F3A2",
+            amountToCent=1099,
+            dueDay=15,
+            isAuto=True,
+            active=True,
+            streamId="seed-stream-spotify",
         ))
 
         db.commit()

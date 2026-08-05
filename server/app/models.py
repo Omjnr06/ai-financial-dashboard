@@ -18,11 +18,12 @@ class Status(str, Enum):
     error = "error"
 
 # for type in accounts
-class Type(str,Enum):
-    checking = "checking"
-    saving = "saving"
+class AccountType(str, Enum):
+    spending = "spending"
     credit = "credit"
-
+    savings = "savings"
+    investment = "investment"
+    loan = "loan"
 # better auth defines the user tables so they are referenced and used here but not defined in the models.py file
 
 # each persons profile
@@ -43,7 +44,7 @@ class PlaidItem(SQLModel, table=True):
     userId: str = Field(index = True)
     accessTokenEncrypted: str
     itemId: str = Field(index = True,unique = True)
-    instituionName: str | None = Field(default = None) # nullable
+    institutionName: str | None = Field(default = None) # nullable
     status: Status
     cursor: str | None = Field(default=None)
     createdAt: datetime = Field(default_factory = nowUtc)
@@ -56,8 +57,12 @@ class Accounts(SQLModel, table = True):
      plaidItemId: str = Field(foreign_key = "plaiditem.id")
      plaidAccountId: str = Field(unique = True, index = True)
      name: str
-     type: Type
+     accountType: AccountType
+     plaidType: str | None = Field(default=None)
+     plaidSubtype: str | None = Field(default=None)
      currentBalanceToCent: int
+     availableBalanceToCent: int | None = Field(default=None)
+     limitToCent: int | None = Field(default=None)
      createdAt: datetime = Field(default_factory = nowUtc)
 
 # transactions table
@@ -81,6 +86,7 @@ class Bucket(SQLModel, table = True):
     __tablename__ = "bucket"
     id: str = Field(default_factory = uid, primary_key = True)
     userId: str = Field(index = True)
+    accountId: str | None = Field(default=None, foreign_key = "accounts.id", index = True)
     name: str
     targetToCent: int
     currentToCent: int
@@ -91,6 +97,10 @@ class Bills(SQLModel,table = True):
     __tablename__= "bills"
     id: str = Field(default_factory = uid, primary_key = True)
     userId: str = Field(index = True)
+    accountId: str | None = Field(default=None, foreign_key = "accounts.id", index = True)
+    streamId: str | None = Field(default=None, index = True, unique = True)
+    userModified: bool = Field(default=False)
+    rawName: str | None = Field(default=None)
     name: str
     amountToCent: int
     dueDay: int # day of the month from 1 - 31

@@ -73,6 +73,21 @@ def sync_transactions(db: Session, item_id: str) -> dict:
                 db.delete(existing)
                 removed_count += 1
 
+        for acct in resp["accounts"]:
+            account = db.exec(
+                select(Accounts).where(Accounts.plaidAccountId == acct["account_id"])
+            ).first()
+            if account is None:
+                continue
+            balances = acct["balances"]
+            current = balances["current"] or 0
+            account.currentBalanceToCent = int(round(current * 100))
+            available = balances.get("available")
+            limit = balances.get("limit")
+            account.availableBalanceToCent = int(round(available * 100)) if available is not None else None
+            account.limitToCent = int(round(limit * 100)) if limit is not None else None
+            db.add(account)
+
         cursor = resp["next_cursor"]
         has_more = resp["has_more"]
 

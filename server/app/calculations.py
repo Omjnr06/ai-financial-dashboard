@@ -2,7 +2,7 @@ from sqlmodel import Session, select
 from sqlalchemy import func
 from datetime import date
 
-from app.models import Accounts, Bills, Bucket, Profiles, Type
+from app.models import Accounts, Bills, Bucket, Profiles, AccountType
 
 
 # function for calculating the amount safe for each user to spend
@@ -13,7 +13,7 @@ def calculate_safe_to_spend(db: Session, user_id: str) -> dict:
     balance = db.exec(
         select(func.sum(Accounts.currentBalanceToCent)).where(
             Accounts.userId == user_id,
-            Accounts.type != Type.credit,
+            Accounts.accountType == AccountType.spending,
         )
     ).one() or 0
 
