@@ -10,6 +10,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
 class SafeToSpendResponse(BaseModel):
+    accountId: str | None
     safeToSpendCent: int
     balanceCent: int
     upcomingBillsCent: int

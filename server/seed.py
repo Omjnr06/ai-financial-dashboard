@@ -78,6 +78,19 @@ def seed():
             plaidSubtype="checking",
             currentBalanceToCent=570000,
             availableBalanceToCent=570000,
+            safeToSpendThresholdCent=400000,
+        )
+        everyday = Accounts(
+            userId=TEST_USER_ID,
+            plaidItemId=cibc.id,
+            plaidAccountId="seed-acct-everyday",
+            name="Everyday Chequing",
+            accountType=AccountType.spending,
+            plaidType="depository",
+            plaidSubtype="checking",
+            currentBalanceToCent=120000,
+            availableBalanceToCent=120000,
+            safeToSpendThresholdCent=50000,
         )
         credit = Accounts(
             userId=TEST_USER_ID,
@@ -123,6 +136,7 @@ def seed():
             currentBalanceToCent=1500000,
         )
         db.add(chequing)
+        db.add(everyday)
         db.add(credit)
         db.add(savings)
         db.add(investment)

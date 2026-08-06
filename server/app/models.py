@@ -34,7 +34,6 @@ class Profiles(SQLModel, table = True):
     timezone: str = Field(default = "America/Toronto")
     layoutId: str = Field(default="horizontal")
     themeId: str = Field(default = "midnight")
-    safeToSpendThresholdCent: int = Field(default=0) 
     createdAt: datetime = Field(default_factory = nowUtc)
 
 # each transaction or "item" in plaid
@@ -63,6 +62,7 @@ class Accounts(SQLModel, table = True):
      currentBalanceToCent: int
      availableBalanceToCent: int | None = Field(default=None)
      limitToCent: int | None = Field(default=None)
+     safeToSpendThresholdCent: int = Field(default=0)
      createdAt: datetime = Field(default_factory = nowUtc)
 
 # transactions table

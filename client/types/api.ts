@@ -38,10 +38,39 @@ export interface BillCreate {
 
 // safe to spend response shape
 export interface SafeToSpend {
+  accountId: string | null;
   safeToSpendCent: number;
   balanceCent: number;
   upcomingBillsCent: number;
   goalAllocationsCent: number;
   thresholdCent: number;
+}
+
+export type AccountType = "spending" | "credit" | "savings" | "investment" | "loan";
+
+// one connected account under an institution
+export interface Account {
+  id: string;
+  institutionName: string;
+  name: string;
+  accountType: AccountType;
+  currentBalanceToCent: number;
+  availableBalanceToCent: number | null;
+  limitToCent: number | null;
+}
+
+
+// assets - debts across every account
+export interface NetWorth {
+  netWorthCent: number;
+  assetsCent: number;
+  debtsCent: number;
+}
+
+// dashboard summary across all accounts
+export interface AccountsSummary {
+  netWorth: NetWorth;
+  aggregateSafeToSpend: SafeToSpend;
+  accounts: Account[];
 }
 
