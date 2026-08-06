@@ -4,16 +4,18 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUpRight, ChevronDown, AlertCircle } from "lucide-react";
 import { formatCents } from "@/lib/format";
-import { SafeToSpend, Bill } from "@/types/api";
+import { SafeToSpend, Bill,NetWorth,Account} from "@/types/api";
 
 interface HeroTileProps {
   data: SafeToSpend | null;
   bills: Bill[];
   isLoading: boolean;
   error: boolean;
+  netWorth?: NetWorth | null;
+  selectedAccount?: Account | null;
 }
 
-export function SafeToSpendHeroTile({ data, bills, isLoading, error }: HeroTileProps) {
+export function SafeToSpendHeroTile({ data, bills, isLoading, error, netWorth, selectedAccount }: HeroTileProps) {
   const [timeframe, setTimeframe] = useState<"day" | "week" | "month">("week");
   const [isExpanded, setIsExpanded] = useState(false);
 

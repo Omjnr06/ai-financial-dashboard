@@ -51,7 +51,7 @@ export type AccountType = "spending" | "credit" | "savings" | "investment" | "lo
 // one connected account under an institution
 export interface Account {
   id: string;
-  institutionName: string;
+  institutionName: string | null;
   name: string;
   accountType: AccountType;
   currentBalanceToCent: number;

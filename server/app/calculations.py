@@ -2,7 +2,7 @@ from sqlmodel import Session, select
 from sqlalchemy import func
 from datetime import date
 
-from app.models import Accounts, Bills, Bucket, AccountType
+from app.models import Accounts, Bills, Bucket, AccountType, PlaidItem
 
 
 # function for calculating the amount safe for each user to spend
@@ -78,3 +78,24 @@ def calculate_net_worth(db: Session, user_id: str) -> dict:
         "assetsCent": assets,
         "debtsCent": debts,
     }
+
+# method for returning all a users accounts, returns a lists of all the accounts
+def get_accounts(db: Session, user_id: str) -> list[dict]:
+    rows = db.exec(
+        select(Accounts, PlaidItem.institutionName)
+        .join(PlaidItem, Accounts.plaidItemId == PlaidItem.id)
+        .where(Accounts.userId == user_id)
+        .order_by(Accounts.createdAt)
+    ).all()
+    return [
+        {
+            "id": account.id,
+            "institutionName": institution_name,
+            "name": account.name,
+            "accountType": account.accountType,
+            "currentBalanceToCent": account.currentBalanceToCent,
+            "availableBalanceToCent": account.availableBalanceToCent,
+            "limitToCent": account.limitToCent,
+        }
+        for account, institution_name in rows
+    ]

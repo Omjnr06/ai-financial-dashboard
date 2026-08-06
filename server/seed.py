@@ -7,7 +7,7 @@ from app.models import (
 )
 
 
-TEST_USER_ID = "seed-user-0001"
+TEST_USER_ID = "2wL0la6KMpuywFOSWCBChzM1XGVfsL5h"
 
 CATEGORIES = ["Groceries", "Dining", "Transport", "Shopping", "Bills", "Entertainment"]
 MERCHANTS = {
