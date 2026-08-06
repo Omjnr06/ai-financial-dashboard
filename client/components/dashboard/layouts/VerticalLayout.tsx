@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Home, ArrowLeftRight, PiggyBank, MessageSquare, Settings, LayoutGrid } from "lucide-react";
 import { useThemeStore } from "@/stores/useThemeStore";
+import { usePathname } from "next/navigation";
 
 interface VerticalLayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ const navItems = [
 export function VerticalLayout({ children, onOpenChat }: VerticalLayoutProps) {
   const { setLayout } = useThemeStore();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+   const pathname = usePathname();
 
   return (
     <div className="min-h-screen bg-surface text-text-primary p-4 md:p-8 flex flex-col md:flex-row gap-6">
@@ -50,7 +52,9 @@ export function VerticalLayout({ children, onOpenChat }: VerticalLayoutProps) {
                     href={item.href}
                     aria-label={item.label}
                     className={`p-3 rounded-2xl transition-colors ${
-                      idx === 0 ? "bg-accent text-white" : "hover:bg-surface text-text-muted hover:text-text-primary"
+                      pathname === item.href
+                        ? "bg-accent text-white"
+                        : "hover:bg-surface text-text-muted hover:text-text-primary"
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -84,9 +88,9 @@ export function VerticalLayout({ children, onOpenChat }: VerticalLayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 space-y-6">
+      <div className="flex-1 min-w-0 space-y-6">
         <header className="flex items-center justify-between">
-          <h1 className="font-kumar text-3xl md:text-4xl tracking-widest text-text-primary">
+          <h1 className="text-3xl md:text-4xl tracking-widest text-text-primary" style={{ fontFamily: "var(--font-kumar)" }}>
             The Vault
           </h1>
           <button

@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, ChevronDown, AlertCircle } from "lucide-react";
+import { ChevronDown, AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
 import { formatCents } from "@/lib/format";
-import { SafeToSpend, Bill,NetWorth,Account} from "@/types/api";
+import { SafeToSpend, Bill, NetWorth, Account } from "@/types/api";
 
 interface HeroTileProps {
   data: SafeToSpend | null;
@@ -15,9 +15,21 @@ interface HeroTileProps {
   selectedAccount?: Account | null;
 }
 
-export function SafeToSpendHeroTile({ data, bills, isLoading, error, netWorth, selectedAccount }: HeroTileProps) {
+export function SafeToSpendHeroTile({
+  data,
+  bills,
+  isLoading,
+  error,
+  netWorth,
+  selectedAccount,
+}: HeroTileProps) {
   const [timeframe, setTimeframe] = useState<"day" | "week" | "month">("week");
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const isSpendingView =
+    selectedAccount === null ||
+    selectedAccount === undefined ||
+    selectedAccount.accountType === "spending";
 
   if (isLoading) {
     return (
@@ -29,11 +41,17 @@ export function SafeToSpendHeroTile({ data, bills, isLoading, error, netWorth, s
     );
   }
 
+  if (!isSpendingView && selectedAccount) {
+    return (
+      <AccountDetailHero account={selectedAccount} />
+    );
+  }
+
   if (error || !data) {
     return (
       <div className="bg-surface-raised rounded-3xl p-6 md:p-8 border border-border-subtle flex flex-col justify-center items-center text-center h-full min-h-55">
         <AlertCircle className="w-8 h-8 text-warning mb-2" />
-        <p className="text-text-primary text-sm font-medium">Couldn't load Safe to Spend</p>
+        <p className="text-text-primary text-sm font-medium">Couldn&apos;t load Safe to Spend</p>
         <span className="text-text-muted text-xs mt-1">Check back in a moment</span>
       </div>
     );
@@ -43,9 +61,11 @@ export function SafeToSpendHeroTile({ data, bills, isLoading, error, netWorth, s
   const calculatedSafeToSpend = Math.round(data.safeToSpendCent * multiplier);
   const hasNoBills = bills.length === 0;
 
+  const showNetWorth = selectedAccount == null && netWorth != null;
+
   return (
     <div className="bg-surface-raised rounded-3xl p-6 md:p-8 border border-border-subtle flex flex-col justify-start relative overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
-        <div
+      <div
         className="absolute -top-24 -left-24 pointer-events-none"
         style={{
           background: "radial-gradient(circle, var(--accent) 0%, transparent 70%)",
@@ -88,19 +108,19 @@ export function SafeToSpendHeroTile({ data, bills, isLoading, error, netWorth, s
               {formatCents(data.balanceCent)}
             </span>
           </div>
-            <div className="mt-5">
+          <div className="mt-5">
             <div className="h-2 rounded-full bg-surface overflow-hidden">
-            <div
+              <div
                 className="h-full rounded-full bg-accent transition-all"
                 style={{
-                width: `${Math.min(100, Math.max(0, (calculatedSafeToSpend / (data.balanceCent || 1)) * 100))}%`,
+                  width: `${Math.min(100, Math.max(0, (calculatedSafeToSpend / (data.balanceCent || 1)) * 100))}%`,
                 }}
-            />
+              />
             </div>
             <p className="text-text-muted text-xs mt-2">
-            {Math.round((calculatedSafeToSpend / (data.balanceCent || 1)) * 100)}% of your balance is safe to spend
+              {Math.round((calculatedSafeToSpend / (data.balanceCent || 1)) * 100)}% of your balance is safe to spend
             </p>
-        </div>
+          </div>
           <div>
             Threshold -{" "}
             <span className="text-text-primary font-medium tabular-nums">
@@ -161,6 +181,164 @@ export function SafeToSpendHeroTile({ data, bills, isLoading, error, netWorth, s
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showNetWorth && netWorth && (
+        <div className="mt-6 pt-6 border-t border-border-subtle">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-text-muted text-sm tracking-wide">Net worth</span>
+              <div
+                className={`font-sans font-bold text-3xl md:text-4xl tabular-nums tracking-tight ${
+                  netWorth.netWorthCent < 0 ? "text-danger" : "text-text-primary"
+                }`}
+              >
+                {formatCents(netWorth.netWorthCent)}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 text-xs">
+              <div className="flex items-center gap-2 text-text-muted">
+                <TrendingUp className="w-4 h-4 text-accent" />
+                <span>Assets</span>
+                <span className="text-text-primary font-medium tabular-nums">
+                  {formatCents(netWorth.assetsCent)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-text-muted">
+                <TrendingDown className="w-4 h-4 text-danger" />
+                <span>Debts</span>
+                <span className="text-text-primary font-medium tabular-nums">
+                  {formatCents(netWorth.debtsCent)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+// per-account hero for non-spending accounts (credit / savings / investment / loan)
+function AccountDetailHero({ account }: { account: Account }) {
+  const config = getAccountConfig(account);
+
+  return (
+    <div className="bg-surface-raised rounded-3xl p-6 md:p-8 border border-border-subtle flex flex-col justify-start relative overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
+      <div
+        className="absolute -top-24 -left-24 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, var(--accent) 0%, transparent 70%)",
+          width: "450px",
+          height: "300px",
+          opacity: 0.18,
+          filter: "blur(70px)",
+        }}
+      />
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-text-muted text-sm tracking-wide">{config.label}</span>
+        <span className="text-text-muted text-xs px-3 py-1 rounded-full bg-surface border border-border-subtle capitalize">
+          {account.accountType}
+        </span>
+      </div>
+
+      <div className="my-4">
+        <div className="font-sans font-bold text-5xl md:text-7xl tabular-nums text-text-primary tracking-tight">
+          {formatCents(config.heroValueCent)}
+        </div>
+        <p className="text-text-muted text-sm mt-3">{config.heroSubtitle}</p>
+      </div>
+
+      {config.utilization != null && (
+        <div className="mt-2">
+          <div className="h-2 rounded-full bg-surface overflow-hidden">
+            <div
+              className="h-full rounded-full bg-accent transition-all"
+              style={{ width: `${Math.min(100, Math.max(0, config.utilization))}%` }}
+            />
+          </div>
+          <p className="text-text-muted text-xs mt-2">
+            {Math.round(config.utilization)}% of your limit used
+          </p>
+        </div>
+      )}
+
+      {config.rows.length > 0 && (
+        <div className="mt-6 pt-6 border-t border-border-subtle space-y-2 text-sm">
+          {config.rows.map((row) => (
+            <div key={row.label} className="flex justify-between text-text-muted">
+              <span>{row.label}</span>
+              <span className="text-text-primary font-medium tabular-nums">
+                {formatCents(row.valueCent)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface AccountConfig {
+  label: string;
+  heroValueCent: number;
+  heroSubtitle: string;
+  utilization: number | null;
+  rows: { label: string; valueCent: number }[];
+}
+
+function getAccountConfig(account: Account): AccountConfig {
+  switch (account.accountType) {
+    case "credit": {
+      const owed = account.currentBalanceToCent;
+      const limit = account.limitToCent ?? 0;
+      const available = account.availableBalanceToCent ?? (limit - owed);
+      const utilization = limit > 0 ? (owed / limit) * 100 : null;
+      return {
+        label: "Balance owed",
+        heroValueCent: owed,
+        heroSubtitle: `${formatCents(available)} available to spend`,
+        utilization,
+        rows: [
+          { label: "Credit limit", valueCent: limit },
+          { label: "Available", valueCent: available },
+        ],
+      };
+    }
+    case "savings": {
+      return {
+        label: "Savings balance",
+        heroValueCent: account.currentBalanceToCent,
+        heroSubtitle: "Set goals to track what you're saving toward",
+        utilization: null,
+        rows: [],
+      };
+    }
+    case "investment": {
+      return {
+        label: "Market value",
+        heroValueCent: account.currentBalanceToCent,
+        heroSubtitle: "Value moves with the market",
+        utilization: null,
+        rows: [],
+      };
+    }
+    case "loan": {
+      return {
+        label: "Balance owed",
+        heroValueCent: account.currentBalanceToCent,
+        heroSubtitle: "Remaining on this loan",
+        utilization: null,
+        rows: [],
+      };
+    }
+    default: {
+      return {
+        label: "Balance",
+        heroValueCent: account.currentBalanceToCent,
+        heroSubtitle: "",
+        utilization: null,
+        rows: [],
+      };
+    }
+  }
 }
