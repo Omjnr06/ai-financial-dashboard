@@ -2,6 +2,7 @@ import { Bill, SafeToSpend } from "@/types/api";
 
 // 1. Safe To Spend (Matches your wireframe exactly)
 export const mockSafeToSpend: SafeToSpend = {
+  accountId: null,
   safeToSpendCent: 80000,      // $800.00
   balanceCent: 570000,         // $5,700.00
   upcomingBillsCent: 140000,
