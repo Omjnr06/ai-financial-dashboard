@@ -3,7 +3,7 @@ import sqlalchemy as sa
 import sqlmodel
 from sqlalchemy.dialects import postgresql
 
-revision = "REPLACE_ME"
+revision = "0cab68b4d7ee"
 down_revision = "583d6357b1f7"
 branch_labels = None
 depends_on = None

@@ -24,6 +24,8 @@ import { SlideOverChat } from "@/components/dashboard/SlideOverChat";
 
 import { mockSummary, mockAccountSafeToSpend, mockBills, mockTransactions, mockBuckets } from "@/mocks";
 
+type Timeframe = "day" | "week" | "month";
+
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, isPending: isAuthPending } = authClient.useSession();
@@ -32,8 +34,10 @@ export default function DashboardPage() {
 
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInitialQuery, setChatInitialQuery] = useState("");
+  const [timeframe, setTimeframe] = useState<Timeframe>("week");
 
   const [summary, setSummary] = useState<AccountsSummary | null>(null);
+  const [aggregateSafeToSpend, setAggregateSafeToSpend] = useState<SafeToSpend | null>(null);
   const [accountSafeToSpend, setAccountSafeToSpend] = useState<SafeToSpend | null>(null);
   const [bills, setBills] = useState<Bill[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -86,14 +90,35 @@ export default function DashboardPage() {
       : null;
 
   useEffect(() => {
+    async function fetchAggregateSafeToSpend() {
+      try {
+        const res = await apiGet<SafeToSpend>(
+          `/api/dashboard/safe-to-spend?timeframe=${timeframe}`,
+          mockSummary.aggregateSafeToSpend
+        );
+        setAggregateSafeToSpend(res);
+      } catch {
+        setAggregateSafeToSpend(null);
+      }
+    }
+    if (session) {
+      fetchAggregateSafeToSpend();
+    }
+  }, [session, timeframe]);
+
+  useEffect(() => {
     async function fetchAccountSafeToSpend() {
-      if (!selectedAccount || selectedAccount.accountType !== "spending") {
+      const account =
+        selectedAccountId && summary
+          ? summary.accounts.find((a) => a.id === selectedAccountId) ?? null
+          : null;
+      if (!account || account.accountType !== "spending") {
         setAccountSafeToSpend(null);
         return;
       }
       try {
         const res = await apiGet<SafeToSpend>(
-          `/api/dashboard/safe-to-spend?accountId=${selectedAccount.id}`,
+          `/api/dashboard/safe-to-spend?accountId=${account.id}&timeframe=${timeframe}`,
           mockAccountSafeToSpend
         );
         setAccountSafeToSpend(res);
@@ -104,7 +129,7 @@ export default function DashboardPage() {
     if (session) {
       fetchAccountSafeToSpend();
     }
-  }, [selectedAccount, session]);
+  }, [selectedAccountId, summary, session, timeframe]);
 
   const handleOpenChatWithQuery = (query?: string) => {
     if (query) setChatInitialQuery(query);
@@ -114,9 +139,7 @@ export default function DashboardPage() {
   const LayoutWrapper = layoutId === "vertical" ? VerticalLayout : HorizontalLayout;
 
   const heroData: SafeToSpend | null =
-    selectedAccount === null
-      ? summary?.aggregateSafeToSpend ?? null
-      : accountSafeToSpend;
+    selectedAccount === null ? aggregateSafeToSpend : accountSafeToSpend;
 
   const dashboardBody = (
     <div className="flex flex-col md:flex-row gap-6">
@@ -128,6 +151,8 @@ export default function DashboardPage() {
           error={hasError}
           netWorth={summary?.netWorth ?? null}
           selectedAccount={selectedAccount}
+          timeframe={timeframe}
+          onTimeframeChange={setTimeframe}
         />
         <SpendingGraphsTile isLoading={isLoading} />
       </div>

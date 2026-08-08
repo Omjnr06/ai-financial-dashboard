@@ -13,6 +13,8 @@ interface HeroTileProps {
   error: boolean;
   netWorth?: NetWorth | null;
   selectedAccount?: Account | null;
+  timeframe: "day" | "week" | "month";
+  onTimeframeChange: (tf: "day" | "week" | "month") => void;
 }
 
 export function SafeToSpendHeroTile({
@@ -22,8 +24,9 @@ export function SafeToSpendHeroTile({
   error,
   netWorth,
   selectedAccount,
+  timeframe,
+  onTimeframeChange,
 }: HeroTileProps) {
-  const [timeframe, setTimeframe] = useState<"day" | "week" | "month">("week");
   const [isExpanded, setIsExpanded] = useState(false);
 
   const isSpendingView =
@@ -57,8 +60,6 @@ export function SafeToSpendHeroTile({
     );
   }
 
-  const multiplier = timeframe === "day" ? 1 / 7 : timeframe === "month" ? 4.33 : 1;
-  const calculatedSafeToSpend = Math.round(data.safeToSpendCent * multiplier);
   const hasNoBills = bills.length === 0;
 
   const showNetWorth = selectedAccount == null && netWorth != null;
@@ -83,7 +84,7 @@ export function SafeToSpendHeroTile({
           {(["day", "week", "month"] as const).map((tf) => (
             <button
               key={tf}
-              onClick={() => setTimeframe(tf)}
+              onClick={() => onTimeframeChange(tf)}
               className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-all ${
                 timeframe === tf
                   ? "bg-accent text-white shadow-sm"
@@ -98,7 +99,7 @@ export function SafeToSpendHeroTile({
 
       <div className="my-4">
         <div className="font-sans font-bold text-5xl md:text-7xl tabular-nums text-text-primary tracking-tight">
-          {formatCents(calculatedSafeToSpend)}
+          {formatCents(data.safeToSpendCent)}
         </div>
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 mt-3 text-sm text-text-muted">
@@ -113,12 +114,12 @@ export function SafeToSpendHeroTile({
               <div
                 className="h-full rounded-full bg-accent transition-all"
                 style={{
-                  width: `${Math.min(100, Math.max(0, (calculatedSafeToSpend / (data.balanceCent || 1)) * 100))}%`,
+                  width: `${Math.min(100, Math.max(0, (data.safeToSpendCent / (data.balanceCent || 1)) * 100))}%`,
                 }}
               />
             </div>
             <p className="text-text-muted text-xs mt-2">
-              {Math.round((calculatedSafeToSpend / (data.balanceCent || 1)) * 100)}% of your balance is safe to spend
+              {Math.round((data.safeToSpendCent / (data.balanceCent || 1)) * 100)}% of your balance is safe to spend
             </p>
           </div>
           <div>
@@ -161,15 +162,21 @@ export function SafeToSpendHeroTile({
             className="overflow-hidden mt-4 pt-4 border-t border-border-subtle space-y-2 text-xs"
           >
             <div className="flex justify-between text-text-muted">
+              <span>Income ({timeframe}):</span>
+              <span className="text-accent font-medium tabular-nums">
+                +{formatCents(data.incomeCent)}
+              </span>
+            </div>
+            <div className="flex justify-between text-text-muted">
               <span>Upcoming Bills ({timeframe}):</span>
               <span className="text-danger font-medium tabular-nums">
-                -{formatCents(Math.round(data.upcomingBillsCent * multiplier))}
+                -{formatCents(data.upcomingBillsCent)}
               </span>
             </div>
             <div className="flex justify-between text-text-muted">
               <span>Savings Allocations:</span>
               <span className="text-warning font-medium tabular-nums">
-                -{formatCents(Math.round(data.goalAllocationsCent * multiplier))}
+                -{formatCents(data.goalAllocationsCent)}
               </span>
             </div>
             <div className="flex justify-between text-text-muted">

@@ -106,6 +106,8 @@ class Bills(SQLModel,table = True):
     accountId: str | None = Field(default=None, foreign_key = "accounts.id", index = True)
     streamId: str | None = Field(default=None, index = True, unique = True)
     userModified: bool = Field(default=False)
+    reviewed: bool = Field(default=False)
+    dismissed: bool = Field(default=False)
     rawName: str | None = Field(default=None)
     name: str
     amountToCent: int

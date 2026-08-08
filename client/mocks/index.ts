@@ -5,6 +5,7 @@ export const mockSafeToSpend: SafeToSpend = {
   accountId: null,
   safeToSpendCent: 51500,      // $515.00
   balanceCent: 115000,         // $1,150.00 (both chequings)
+  incomeCent: 0,
   upcomingBillsCent: 18500,    // $185.00
   goalAllocationsCent: 25000,  // $250.00
   thresholdCent: 20000         // $200.00
@@ -80,6 +81,7 @@ export const mockSummary: AccountsSummary = {
     accountId: null,
     safeToSpendCent: 51500,      // $515.00
     balanceCent: 115000,         // $1,150.00
+    incomeCent: 0,
     upcomingBillsCent: 18500,    // $185.00
     goalAllocationsCent: 25000,  // $250.00
     thresholdCent: 20000,        // $200.00
@@ -101,6 +103,7 @@ export const mockAccountSafeToSpend: SafeToSpend = {
   accountId: "acc-chequing",
   safeToSpendCent: 55000,      // $550.00
   balanceCent: 85000,          // $850.00
+  incomeCent: 0,
   upcomingBillsCent: 9000,     // $90.00
   goalAllocationsCent: 15000,  // $150.00
   thresholdCent: 15000,        // $150.00

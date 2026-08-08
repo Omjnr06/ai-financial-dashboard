@@ -201,6 +201,7 @@ def seed():
             amountToCent=140000,
             dueDay=1,
             isAuto=False,
+            reviewed=True,
             active=True,
         ))
         db.add(Bills(
@@ -211,8 +212,34 @@ def seed():
             amountToCent=1099,
             dueDay=15,
             isAuto=True,
+            reviewed=False,
             active=True,
             streamId="seed-stream-spotify",
+        ))
+        db.add(Bills(
+            userId=TEST_USER_ID,
+            accountId=chequing.id,
+            name="Netflix",
+            rawName="NETFLIX.COM",
+            amountToCent=1699,
+            dueDay=8,
+            isAuto=True,
+            reviewed=True,
+            active=True,
+            streamId="seed-stream-netflix",
+        ))
+        db.add(Bills(
+            userId=TEST_USER_ID,
+            accountId=chequing.id,
+            name="Old Gym",
+            rawName="SQ *OLD GYM 4821",
+            amountToCent=2900,
+            dueDay=5,
+            isAuto=True,
+            reviewed=False,
+            active=False,
+            dismissed=True,
+            streamId="seed-stream-oldgym",
         ))
 
         db.add(IncomeSource(
