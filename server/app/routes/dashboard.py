@@ -14,6 +14,7 @@ class SafeToSpendResponse(BaseModel):
     accountId: str | None
     safeToSpendCent: int
     balanceCent: int
+    incomeCent: int
     upcomingBillsCent: int
     goalAllocationsCent: int
     thresholdCent: int
@@ -50,17 +51,22 @@ class AccountsSummaryResponse(BaseModel):
 )
 def safe_to_spend(
     account_id: str | None = Query(default=None, alias="accountId"),
+    timeframe: str = Query(default="week", pattern="^(day|week|month)$"),
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_session),
 ) -> SafeToSpendResponse:
     """
     Compute the hero metric: how much the user can safely spend right now.
 
-    Returns **balance + upcoming bills this month + goal allocations +
-    threshold**, all in integer cents, along with each component so the
-    dashboard can display properly. Safe to spend is calculated by balance - upcoming bills - goal allocations - user set threshold
+    Returns **balance + projected income − upcoming bills − goal allocations −
+    threshold**, all in integer cents, with each component broken out for the
+    dashboard. Income is projected over a timeframe window (day, week, or
+    month) and only counts paydays that have not yet arrived, so it never
+    counts the money already in the balance twice. Internal transfers between the
+    user's own accounts are excluded from the aggregate but count toward the
+    destination account's per account figure.
     """
-    return calculate_safe_to_spend(db, user_id, account_id)
+    return calculate_safe_to_spend(db, user_id, account_id, timeframe)
 
 # endpoint for getting all authenticated users asscounts
 @router.get(

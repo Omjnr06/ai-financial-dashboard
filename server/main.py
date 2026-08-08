@@ -7,6 +7,7 @@ import logging
 from app.routes.plaid import router as plaid_router
 from app.routes.bills import router as bills_router
 from app.routes.dashboard import router as dashboard_router
+from app.routes.income import router as income_router
 
 # to run locally
 # uv run uvicorn main:app --reload
@@ -45,3 +46,6 @@ app.include_router(bills_router)
 
 # dashboard routes
 app.include_router(dashboard_router)
+
+# income routes
+app.include_router(income_router)

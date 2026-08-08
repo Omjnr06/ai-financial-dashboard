@@ -2,9 +2,7 @@ import random
 from datetime import date, timedelta
 from sqlmodel import Session, delete
 from app.database import engine
-from app.models import (
-    Profiles, PlaidItem, Accounts, Transactions, Bucket, Bills, Status, AccountType
-)
+from app.models import (Profiles, PlaidItem, Accounts, Transactions, Bucket, Bills, Status, AccountType, IncomeSource, IncomeFrequency)
 
 
 TEST_USER_ID = "2wL0la6KMpuywFOSWCBChzM1XGVfsL5h"
@@ -34,6 +32,7 @@ def seed():
     with Session(engine) as db:
         db.execute(delete(Transactions).where(Transactions.userId == TEST_USER_ID))
         db.execute(delete(Bills).where(Bills.userId == TEST_USER_ID))
+        db.execute(delete(IncomeSource).where(IncomeSource.userId == TEST_USER_ID))
         db.execute(delete(Bucket).where(Bucket.userId == TEST_USER_ID))
         db.execute(delete(Accounts).where(Accounts.userId == TEST_USER_ID))
         db.execute(delete(PlaidItem).where(PlaidItem.userId == TEST_USER_ID))
@@ -214,6 +213,28 @@ def seed():
             isAuto=True,
             active=True,
             streamId="seed-stream-spotify",
+        ))
+
+        db.add(IncomeSource(
+            userId=TEST_USER_ID,
+            accountId=chequing.id,
+            sourceAccountId=savings.id,
+            isInternalTransfer=True,
+            name="Weekly allowance from savings",
+            amountToCent=25000,
+            frequency=IncomeFrequency.weekly,
+            anchorDate=today - timedelta(days=3),
+            active=True,
+        ))
+        db.add(IncomeSource(
+            userId=TEST_USER_ID,
+            accountId=chequing.id,
+            isInternalTransfer=False,
+            name="Part-time Job",
+            amountToCent=60000,
+            frequency=IncomeFrequency.biweekly,
+            anchorDate=today - timedelta(days=5),
+            active=True,
         ))
 
         db.commit()

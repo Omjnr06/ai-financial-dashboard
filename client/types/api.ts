@@ -1,3 +1,7 @@
+// enums
+export type IncomeFrequency = "weekly" | "biweekly" | "monthly";
+export type AccountType = "spending" | "credit" | "savings" | "investment" | "loan";
+
 // API returns camelCase; backend uses Pydantic alias_generator to convert
 export interface LinkTokenResponse {
     linkToken: string;
@@ -41,12 +45,11 @@ export interface SafeToSpend {
   accountId: string | null;
   safeToSpendCent: number;
   balanceCent: number;
+  incomeCent: number;
   upcomingBillsCent: number;
   goalAllocationsCent: number;
   thresholdCent: number;
 }
-
-export type AccountType = "spending" | "credit" | "savings" | "investment" | "loan";
 
 // one connected account under an institution
 export interface Account {
@@ -72,5 +75,28 @@ export interface AccountsSummary {
   netWorth: NetWorth;
   aggregateSafeToSpend: SafeToSpend;
   accounts: Account[];
+}
+
+// a recurring income source
+export interface IncomeSource {
+  id: string;
+  accountId: string | null;
+  sourceAccountId: string | null;
+  isInternalTransfer: boolean;
+  name: string;
+  amountToCent: number;
+  frequency: IncomeFrequency;
+  anchorDate: string; // ISO date
+  active: boolean;
+}
+
+export interface IncomeCreate {
+  name: string;
+  amountToCent: number;
+  frequency: IncomeFrequency;
+  anchorDate: string;
+  accountId?: string | null;
+  sourceAccountId?: string | null;
+  isInternalTransfer?: boolean;
 }
 
