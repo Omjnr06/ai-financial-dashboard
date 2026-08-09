@@ -1,7 +1,7 @@
 from plaid.api import plaid_api
 from plaid.configuration import Configuration
 from plaid.api_client import ApiClient
-from app.config import settings
+from app.core.config import settings
 from cryptography.fernet import Fernet
 
 _HOSTS = {

@@ -2,10 +2,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 from pydantic import BaseModel
 
-from app.dependencies import get_current_user
-from app.database import get_session
+from app.core.dependencies import get_current_user
+from app.core.database import get_session
 from app.models import AccountType
-from app.calculations import calculate_safe_to_spend, calculate_net_worth, get_accounts
+from app.services.calculations import calculate_safe_to_spend, calculate_net_worth, get_accounts
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 

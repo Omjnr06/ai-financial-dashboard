@@ -1,7 +1,7 @@
 from sqlmodel import Session, select
 from plaid.model.transactions_sync_request import TransactionsSyncRequest
 from plaid.exceptions import ApiException
-from app.plaid_client import plaid_client, decrypt_token
+from app.integrations.plaid_client import plaid_client, decrypt_token
 from app.models import PlaidItem, Accounts, Transactions
 
 

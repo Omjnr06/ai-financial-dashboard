@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from pydantic import BaseModel
-from app.dependencies import get_current_user
-from app.database import get_session
+from app.core.dependencies import get_current_user
+from app.core.database import get_session
 from app.models import Bills
-from app.bill_detection import detect_bills
+from app.services.bill_detection import detect_bills
 
 router = APIRouter(prefix="/api/bills", tags=["bills"])
 

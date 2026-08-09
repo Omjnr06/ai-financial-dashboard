@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from pydantic import BaseModel
 from datetime import date
-from app.dependencies import get_current_user
-from app.database import get_session
+
+from app.core.dependencies import get_current_user
+from app.core.database import get_session
 from app.models import IncomeSource, IncomeFrequency
 
 router = APIRouter(prefix="/api/income", tags=["income"])

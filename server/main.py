@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from app.dependencies import get_current_user
 from fastapi import Depends
 import logging
+from app.core.dependencies import get_current_user
 from app.routes.plaid import router as plaid_router
 from app.routes.bills import router as bills_router
 from app.routes.dashboard import router as dashboard_router

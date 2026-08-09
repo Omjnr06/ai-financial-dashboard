@@ -12,14 +12,14 @@ from plaid.model.country_code import CountryCode
 from plaid.model.sandbox_public_token_create_request import SandboxPublicTokenCreateRequest
 from plaid.model.sandbox_public_token_create_request_options import SandboxPublicTokenCreateRequestOptions
 
-from app.plaid_client import plaid_client, encrypt_token
-from app.dependencies import get_current_user
-from app.database import get_session
+from app.integrations.plaid_client import plaid_client, encrypt_token
+from app.core.dependencies import get_current_user
+from app.core.database import get_session
 from app.models import PlaidItem, Accounts, Status
 from app.utils.account_types import normalize_account_type
-from app.plaid_webhook_verify import verify_webhook
-from app.ingestion import sync_transactions
-from app.config import settings
+from app.integrations.plaid_webhook_verify import verify_webhook
+from app.services.ingestion import sync_transactions
+from app.core.config import settings
 
 router = APIRouter(prefix="/api/plaid", tags=["plaid"])
 logger = logging.getLogger(__name__)
@@ -159,7 +159,7 @@ async def plaid_webhook(request: Request):
     print(f"Verified webhook: type={webhook_type} code={webhook_code} item={item_id}")
 
     if webhook_type == "TRANSACTIONS":
-        from app.database import engine
+        from app.core.database import engine
         with Session(engine) as db:
             result = sync_transactions(db, item_id)
             # for dev, to be changed to logger later by me

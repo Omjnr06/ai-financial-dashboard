@@ -1,7 +1,7 @@
 from sqlmodel import Session, select
 from plaid.model.transactions_recurring_get_request import TransactionsRecurringGetRequest
 
-from app.plaid_client import plaid_client, decrypt_token
+from app.integrations.plaid_client import plaid_client, decrypt_token
 from app.models import PlaidItem, Accounts, Bills
 from app.utils.bill_names import clean_bill_name
 
