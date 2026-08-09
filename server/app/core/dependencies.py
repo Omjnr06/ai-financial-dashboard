@@ -3,7 +3,7 @@ from fastapi import Request, HTTPException, Depends
 from datetime import datetime, timezone
 from sqlmodel import Session
 from sqlalchemy import text
-from app.database import get_session
+from app.core.database import get_session
 
 # reads the Better Auth session cookie, validates it against ba_session, and returns the user_id.
 async def get_current_user( request: Request, db: Session = Depends(get_session)) -> str:

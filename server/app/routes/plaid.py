@@ -9,13 +9,17 @@ from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchan
 from plaid.model.accounts_get_request import AccountsGetRequest
 from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
+from plaid.model.sandbox_public_token_create_request import SandboxPublicTokenCreateRequest
+from plaid.model.sandbox_public_token_create_request_options import SandboxPublicTokenCreateRequestOptions
 
-from app.plaid_client import plaid_client, encrypt_token
-from app.dependencies import get_current_user
-from app.database import get_session
-from app.models import PlaidItem, Accounts, Status, Type
-from app.plaid_webhook_verify import verify_webhook
-from app.ingestion import sync_transactions
+from app.integrations.plaid_client import plaid_client, encrypt_token
+from app.core.dependencies import get_current_user
+from app.core.database import get_session
+from app.models import PlaidItem, Accounts, Status
+from app.utils.account_types import normalize_account_type
+from app.integrations.plaid_webhook_verify import verify_webhook
+from app.services.ingestion import sync_transactions
+from app.core.config import settings
 
 router = APIRouter(prefix="/api/plaid", tags=["plaid"])
 logger = logging.getLogger(__name__)
@@ -101,16 +105,24 @@ def exchange_public_token(
     db.add(plaid_item)
     db.commit()
     db.refresh(plaid_item)
-    type_map = {"depository": Type.checking, "credit": Type.credit}
     for acct in accounts_resp["accounts"]:
-        balance = acct["balances"]["current"] or 0
+        balances = acct["balances"]
+        current = balances["current"] or 0
+        available = balances.get("available")
+        limit = balances.get("limit")
+        plaid_type = str(acct["type"])
+        plaid_subtype = str(acct["subtype"]) if acct.get("subtype") else None
         db.add(Accounts(
             userId=user_id,
             plaidItemId=plaid_item.id,
             plaidAccountId=acct["account_id"],
             name=acct["name"],
-            type=type_map.get(str(acct["type"]), Type.checking),
-            currentBalanceToCent=int(round(balance * 100)),
+            accountType=normalize_account_type(plaid_type, plaid_subtype),
+            plaidType=plaid_type,
+            plaidSubtype=plaid_subtype,
+            currentBalanceToCent=int(round(current * 100)),
+            availableBalanceToCent=int(round(available * 100)) if available is not None else None,
+            limitToCent=int(round(limit * 100)) if limit is not None else None,
         ))
     db.commit()
     return ExchangeResponse(success=True, institutionName=institution_name)
@@ -147,7 +159,7 @@ async def plaid_webhook(request: Request):
     print(f"Verified webhook: type={webhook_type} code={webhook_code} item={item_id}")
 
     if webhook_type == "TRANSACTIONS":
-        from app.database import engine
+        from app.core.database import engine
         with Session(engine) as db:
             result = sync_transactions(db, item_id)
             # for dev, to be changed to logger later by me
@@ -156,3 +168,88 @@ async def plaid_webhook(request: Request):
     return {"acknowledged": True}
 
 
+class SandboxLinkResponse(BaseModel):
+    success: bool
+    institutionName: str
+
+
+@router.post(
+    "/sandbox/link",
+    response_model=SandboxLinkResponse,
+    summary="Link a Sandbox test user (testing only)",
+    response_description="Whether the sandbox link succeeded and the bank name",
+)
+def sandbox_link(
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_session),
+) -> SandboxLinkResponse:
+    """
+    Link a Plaid **Sandbox** test user to the authenticated account without going
+    through Plaid Link.
+
+    Creates a sandbox public token for the ``user_transactions_dynamic`` test
+    user — which comes with six months of recurring transaction history — then
+    exchanges it and stores the item and its accounts exactly like the real
+    exchange flow, finishing with an initial transaction sync. Intended for local
+    testing of ingestion and bill detection; only available while running against
+    the Sandbox environment.
+    """
+    if settings.PLAID_ENV != "sandbox":
+        raise HTTPException(status_code=403, detail="Sandbox linking is only available in sandbox")
+
+    create_resp = plaid_client.sandbox_public_token_create(
+        SandboxPublicTokenCreateRequest(
+            institution_id="ins_109508",
+            initial_products=[Products("transactions")],
+            options=SandboxPublicTokenCreateRequestOptions(
+                override_username="user_transactions_dynamic",
+                override_password="pass_good",
+            ),
+        )
+    )
+    public_token = create_resp["public_token"]
+
+    exchange = plaid_client.item_public_token_exchange(
+        ItemPublicTokenExchangeRequest(public_token=public_token)
+    )
+    access_token = exchange["access_token"]
+    item_id = exchange["item_id"]
+
+    accounts_resp = plaid_client.accounts_get(
+        AccountsGetRequest(access_token=access_token)
+    )
+    institution_name = accounts_resp["item"].get("institution_name") or "Sandbox Bank"
+    plaid_item = PlaidItem(
+        userId=user_id,
+        accessTokenEncrypted=encrypt_token(access_token),
+        itemId=item_id,
+        institutionName=institution_name,
+        status=Status.active,
+    )
+    db.add(plaid_item)
+    db.commit()
+    db.refresh(plaid_item)
+    for acct in accounts_resp["accounts"]:
+        balances = acct["balances"]
+        current = balances["current"] or 0
+        available = balances.get("available")
+        limit = balances.get("limit")
+        plaid_type = str(acct["type"])
+        plaid_subtype = str(acct["subtype"]) if acct.get("subtype") else None
+        db.add(Accounts(
+            userId=user_id,
+            plaidItemId=plaid_item.id,
+            plaidAccountId=acct["account_id"],
+            name=acct["name"],
+            accountType=normalize_account_type(plaid_type, plaid_subtype),
+            plaidType=plaid_type,
+            plaidSubtype=plaid_subtype,
+            currentBalanceToCent=int(round(current * 100)),
+            availableBalanceToCent=int(round(available * 100)) if available is not None else None,
+            limitToCent=int(round(limit * 100)) if limit is not None else None,
+        ))
+    db.commit()
+
+    sync_transactions(db, item_id)
+
+    return SandboxLinkResponse(success=True, institutionName=institution_name)

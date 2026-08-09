@@ -18,11 +18,18 @@ class Status(str, Enum):
     error = "error"
 
 # for type in accounts
-class Type(str,Enum):
-    checking = "checking"
-    saving = "saving"
+class AccountType(str, Enum):
+    spending = "spending"
     credit = "credit"
+    savings = "savings"
+    investment = "investment"
+    loan = "loan"
 
+# for income source frequency
+class IncomeFrequency(str, Enum):
+    weekly = "weekly"
+    biweekly = "biweekly"
+    monthly = "monthly"
 # better auth defines the user tables so they are referenced and used here but not defined in the models.py file
 
 # each persons profile
@@ -33,7 +40,6 @@ class Profiles(SQLModel, table = True):
     timezone: str = Field(default = "America/Toronto")
     layoutId: str = Field(default="horizontal")
     themeId: str = Field(default = "midnight")
-    safeToSpendThresholdCent: int = Field(default=0) 
     createdAt: datetime = Field(default_factory = nowUtc)
 
 # each transaction or "item" in plaid
@@ -43,7 +49,7 @@ class PlaidItem(SQLModel, table=True):
     userId: str = Field(index = True)
     accessTokenEncrypted: str
     itemId: str = Field(index = True,unique = True)
-    instituionName: str | None = Field(default = None) # nullable
+    institutionName: str | None = Field(default = None) # nullable
     status: Status
     cursor: str | None = Field(default=None)
     createdAt: datetime = Field(default_factory = nowUtc)
@@ -56,8 +62,13 @@ class Accounts(SQLModel, table = True):
      plaidItemId: str = Field(foreign_key = "plaiditem.id")
      plaidAccountId: str = Field(unique = True, index = True)
      name: str
-     type: Type
+     accountType: AccountType
+     plaidType: str | None = Field(default=None)
+     plaidSubtype: str | None = Field(default=None)
      currentBalanceToCent: int
+     availableBalanceToCent: int | None = Field(default=None)
+     limitToCent: int | None = Field(default=None)
+     safeToSpendThresholdCent: int = Field(default=0)
      createdAt: datetime = Field(default_factory = nowUtc)
 
 # transactions table
@@ -81,6 +92,7 @@ class Bucket(SQLModel, table = True):
     __tablename__ = "bucket"
     id: str = Field(default_factory = uid, primary_key = True)
     userId: str = Field(index = True)
+    accountId: str | None = Field(default=None, foreign_key = "accounts.id", index = True)
     name: str
     targetToCent: int
     currentToCent: int
@@ -91,17 +103,30 @@ class Bills(SQLModel,table = True):
     __tablename__= "bills"
     id: str = Field(default_factory = uid, primary_key = True)
     userId: str = Field(index = True)
+    accountId: str | None = Field(default=None, foreign_key = "accounts.id", index = True)
+    streamId: str | None = Field(default=None, index = True, unique = True)
+    userModified: bool = Field(default=False)
+    reviewed: bool = Field(default=False)
+    dismissed: bool = Field(default=False)
+    rawName: str | None = Field(default=None)
     name: str
     amountToCent: int
     dueDay: int # day of the month from 1 - 31
     isAuto: bool = Field(default=False)
     active: bool = Field(default=True)
     createdAt: datetime = Field(default_factory = nowUtc)
-    
 
-
-
-
-     
-
-     
+# a recurring income stream (manual entry baseline; plaid inflow detection can pre-fill later)
+class IncomeSource(SQLModel, table = True):
+    __tablename__ = "incomesource"
+    id: str = Field(default_factory = uid, primary_key = True)
+    userId: str = Field(index = True)
+    accountId: str | None = Field(default=None, foreign_key = "accounts.id", index = True) #where the income lands
+    sourceAccountId: str | None = Field(default=None, foreign_key = "accounts.id", index = True) # only set for internal tranfers (savings --> chequing or chequing --> savings)
+    isInternalTransfer: bool = Field(default=False) # true = moving money between own accounts excluded from safe to spend calculations
+    name: str
+    amountToCent: int
+    frequency: IncomeFrequency
+    anchorDate: date # a known payday
+    active: bool = Field(default=True)
+    createdAt: datetime = Field(default_factory = nowUtc)
