@@ -1,5 +1,5 @@
 from sqlmodel import create_engine, Session
-from app.config import settings
+from app.core.config import settings
 
 # the engine is the connection pool
 # we pre ping because of neon scaling down when no users or active connections to db

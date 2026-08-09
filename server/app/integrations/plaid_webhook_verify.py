@@ -3,7 +3,7 @@ import hashlib
 import hmac
 from jwt.algorithms import ECAlgorithm
 from plaid.model.webhook_verification_key_get_request import WebhookVerificationKeyGetRequest
-from app.plaid_client import plaid_client
+from app.integrations.plaid_client import plaid_client
 
 _key_cache: dict[str, dict] = {}
 
