@@ -12,6 +12,7 @@ from app.routes.income import router as income_router
 from app.routes.forecast import router as forecast_router
 from app.routes.transactions import router as transactions_router
 from app.routes.buckets import router as buckets_router
+from app.routes.anomalies import router as anomalies_router
 
 # to run locally
 # uv run uvicorn main:app --reload
@@ -62,3 +63,6 @@ app.include_router(transactions_router)
 
 # buckets routes
 app.include_router(buckets_router)
+
+# anomaly detection route
+app.include_router(anomalies_router)
