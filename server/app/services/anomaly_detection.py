@@ -81,25 +81,25 @@ def detect_anomalies(db: Session, user_id: str, contamination: float = 0.02) -> 
     return {"flagged": flagged_count, "scanned": len(ids), "insufficientData": False}
 
 
-if __name__ == "__main__":
-    from app.core.database import engine
+# if __name__ == "__main__":
+#     from app.core.database import engine
 
-    TEST_USER_ID = "2wL0la6KMpuywFOSWCBChzM1XGVfsL5h"
+#     TEST_USER_ID = "2wL0la6KMpuywFOSWCBChzM1XGVfsL5h"
 
-    with Session(engine) as db:
-        ids, features, above = build_features(db, TEST_USER_ID)
-        print(f"transactions: {len(ids)}, feature shape: {features.shape}\n")
+#     with Session(engine) as db:
+#         ids, features, above = build_features(db, TEST_USER_ID)
+#         print(f"transactions: {len(ids)}, feature shape: {features.shape}\n")
 
-        result = detect_anomalies(db, TEST_USER_ID)
-        print(f"DETECTION: {result}\n")
+#         result = detect_anomalies(db, TEST_USER_ID)
+#         print(f"DETECTION: {result}\n")
 
-        flagged = db.exec(
-            select(Transactions).where(
-                Transactions.userId == TEST_USER_ID,
-                Transactions.isAnomaly == True,
-            )
-        ).all()
-        print(f"FLAGGED {len(flagged)} transactions:")
-        for t in flagged:
-            planted = "  <-- PLANTED" if (t.plaidTransactionId or "").startswith("seed-anomaly") else ""
-            print(f"  {t.merchantName} ${t.amountToCent/100:.0f} ({t.category}) [{t.dateOf}]{planted}")
+#         flagged = db.exec(
+#             select(Transactions).where(
+#                 Transactions.userId == TEST_USER_ID,
+#                 Transactions.isAnomaly == True,
+#             )
+#         ).all()
+#         print(f"FLAGGED {len(flagged)} transactions:")
+#         for t in flagged:
+#             planted = "  <-- PLANTED" if (t.plaidTransactionId or "").startswith("seed-anomaly") else ""
+#             print(f"  {t.merchantName} ${t.amountToCent/100:.0f} ({t.category}) [{t.dateOf}]{planted}")

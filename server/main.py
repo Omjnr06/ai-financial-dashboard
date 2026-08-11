@@ -13,6 +13,7 @@ from app.routes.forecast import router as forecast_router
 from app.routes.transactions import router as transactions_router
 from app.routes.buckets import router as buckets_router
 from app.routes.anomalies import router as anomalies_router
+from app.routes.habits import router as habits_router
 
 # to run locally
 # uv run uvicorn main:app --reload
@@ -66,3 +67,6 @@ app.include_router(buckets_router)
 
 # anomaly detection route
 app.include_router(anomalies_router)
+
+# k-means cluster detection routes
+app.include_router(habits_router)

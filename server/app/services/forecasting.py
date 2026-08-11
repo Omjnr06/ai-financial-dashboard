@@ -92,24 +92,24 @@ def forecast_goal(
 
 
 # testing
-if __name__ == "__main__":
-    from app.core.database import engine
-    from app.models import Bucket
-    from sqlmodel import select
+# if __name__ == "__main__":
+#     from app.core.database import engine
+#     from app.models import Bucket
+#     from sqlmodel import select
 
-    TEST_USER_ID = "2wL0la6KMpuywFOSWCBChzM1XGVfsL5h"
+#     TEST_USER_ID = "2wL0la6KMpuywFOSWCBChzM1XGVfsL5h"
 
-    with Session(engine) as db:
-        history = weekly_net_savings(db, TEST_USER_ID)
-        print(f"weeks of history: {len(history)}\n")
+#     with Session(engine) as db:
+#         history = weekly_net_savings(db, TEST_USER_ID)
+#         print(f"weeks of history: {len(history)}\n")
 
-        buckets = db.exec(select(Bucket).where(Bucket.userId == TEST_USER_ID)).all()
-        for b in buckets:
-            result = forecast_goal(
-                history_cents=history,
-                current_cents=b.currentToCent,
-                target_cents=b.targetToCent,
-                seed=42,
-            )
-            print(f"{b.name} (${b.currentToCent/100:.0f} -> ${b.targetToCent/100:.0f}):")
-            print(f"   {result}\n")
+#         buckets = db.exec(select(Bucket).where(Bucket.userId == TEST_USER_ID)).all()
+#         for b in buckets:
+#             result = forecast_goal(
+#                 history_cents=history,
+#                 current_cents=b.currentToCent,
+#                 target_cents=b.targetToCent,
+#                 seed=42,
+#             )
+#             print(f"{b.name} (${b.currentToCent/100:.0f} -> ${b.targetToCent/100:.0f}):")
+#             print(f"   {result}\n")

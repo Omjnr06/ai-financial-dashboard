@@ -130,3 +130,12 @@ class IncomeSource(SQLModel, table = True):
     anchorDate: date # a known payday
     active: bool = Field(default=True)
     createdAt: datetime = Field(default_factory = nowUtc)
+
+# cached table of a users habits. Powered by k-means
+class HabitProfile(SQLModel, table = True):
+    __tablename__ = "habitprofile"
+    id: str = Field(default_factory = uid, primary_key = True)
+    userId: str = Field(index = True, unique = True)
+    clustersJson: str  # serialized cluster labels + profiles
+    currentClusterLabel: str | None = Field(default=None)
+    computedAt: datetime = Field(default_factory = nowUtc)
