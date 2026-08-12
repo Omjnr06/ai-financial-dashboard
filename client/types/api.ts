@@ -100,3 +100,41 @@ export interface IncomeCreate {
   isInternalTransfer?: boolean;
 }
 
+export interface HabitCluster {
+  cluster: number;
+  label: string;
+  weekCount: number;
+  avgProfile: Record<string, number>;
+}
+
+export interface HabitProfile {
+  insufficientData: boolean;
+  k?: number;
+  categories?: string[];
+  clusters?: HabitCluster[];
+  currentClusterLabel?: string | null;
+}
+
+// for monte carlo visualization
+export interface ForecastBand {
+  week: number;
+  p10Cent: number;
+  p25Cent: number;
+  p50Cent: number;
+  p75Cent: number;
+  p90Cent: number;
+}
+
+export interface ForecastBands {
+  bucketId: string;
+  bucketName: string;
+  targetCent: number;
+  currentCent: number;
+  horizonWeeks: number;
+  medianWeeks: number | null;
+  p90Weeks: number | null;
+  probabilityWithinHorizon: number;
+  bands: ForecastBand[];
+  samplePaths?: number[][];
+}
+

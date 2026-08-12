@@ -1,75 +1,147 @@
 "use client";
 
-import React from "react";
-import { BarChart3, TrendingUp } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { BarChart3 } from "lucide-react";
+import { useDashboardStore } from "@/stores/useDashboardStore";
+
+import type { HabitProfile } from "@/types/api";
+import type { ViewId, Mode, Tx } from "./spending-graphs/types";
+import { getAvailableViews } from "./spending-graphs/registry";
+import { aggregateByWeek, aggregateByMonth, groupByCategory } from "./spending-graphs/aggregate";
+import { ModeToggle } from "./spending-graphs/parts/ModeToggle";
+import { ViewSwitcher } from "./spending-graphs/parts/ViewSwitcher";
+import { ExpandModal } from "./spending-graphs/parts/ExpandModal";
+import { SpendingView } from "./spending-graphs/views/SpendingView";
+import { CategoryView } from "./spending-graphs/views/CategoryView";
+import { AnomalyView } from "./spending-graphs/views/AnomalyView";
+import { HabitsView } from "./spending-graphs/views/HabitsView";
+import { ForecastView } from "./spending-graphs/views/ForecastView";
+
+interface BucketLite {
+  id: string;
+  name: string;
+  targetToCent: number;
+  currentToCent: number;
+}
 
 interface SpendingGraphsTileProps {
+  transactions: Tx[];
+  habits: HabitProfile | null;
+  buckets: BucketLite[];
   isLoading: boolean;
 }
 
-export function SpendingGraphsTile({ isLoading }: SpendingGraphsTileProps) {
+export function SpendingGraphsTile({ transactions, habits, buckets, isLoading }: SpendingGraphsTileProps) {
+  const selectedAccountId = useDashboardStore((s) => s.selectedAccountId);
+  const [mode, setMode] = useState<Mode>("week");
+  const [viewState, setViewState] = useState<ViewId | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const scopedTx = useMemo(() => {
+    const spend = (transactions ?? []).filter((t) => t.amountToCent < 0);
+    if (selectedAccountId === null) return spend;
+    return spend.filter((t) => t.accountId === selectedAccountId);
+  }, [transactions, selectedAccountId]);
+
+  const hasHabits =
+    !!habits && !habits.insufficientData && (habits.clusters?.length ?? 0) > 0;
+  const hasForecast = (buckets?.length ?? 0) > 0;
+
+  const available = useMemo(
+    () =>
+      getAvailableViews(
+        scopedTx.length > 0,
+        selectedAccountId === null,
+        hasHabits,
+        hasForecast
+      ),
+    [scopedTx.length, selectedAccountId, hasHabits, hasForecast]
+  );
+
+  const currentView: ViewId | null =
+    viewState && available.includes(viewState) ? viewState : available[0] ?? null;
+
+  const spendingData = useMemo(
+    () => (mode === "week" ? aggregateByWeek(scopedTx) : aggregateByMonth(scopedTx)),
+    [scopedTx, mode]
+  );
+
+  const categoryGroups = useMemo(() => groupByCategory(scopedTx), [scopedTx]);
+
   if (isLoading) {
     return (
-      <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle animate-pulse h-full min-h-80">
-        <div className="h-4 bg-surface rounded w-1/3 mb-4" />
-        <div className="h-48 bg-surface rounded w-full mt-8" />
+      <div className="h-140 animate-pulse rounded-3xl border border-border-subtle bg-surface-raised p-6">
+        <div className="mb-4 h-4 w-1/3 rounded bg-surface" />
+        <div className="mt-8 h-48 w-full rounded bg-surface" />
       </div>
     );
   }
 
-  const mockBars = [40, 90, 30, 70, 60, 100];
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const renderView = () => {
+    if (currentView === "spending") return <SpendingView data={spendingData} mode={mode} />;
+    if (currentView === "category") return <CategoryView groups={categoryGroups} />;
+    if (currentView === "anomaly") return <AnomalyView transactions={scopedTx} />;
+    if (currentView === "habits") return <HabitsView habits={habits} />;
+    if (currentView === "forecast") return <ForecastView buckets={buckets} />;
+    return null;
+  };
 
   return (
-    <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle flex flex-col justify-start  h-140 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent relative">
-      <div className="flex items-center justify-between text-text-muted text-xs tracking-wide mb-6">
-        <div className="flex items-center gap-2">
-          <span>spending graphs</span>
-          <BarChart3 className="w-4 h-4 text-accent" />
+    <div className="relative flex h-140 flex-col justify-start rounded-3xl border border-border-subtle bg-surface-raised p-6 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:border-accent hover:shadow-2xl hover:shadow-accent/10">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs tracking-wide text-text-muted">
+            <span>spending graphs</span>
+            <BarChart3 className="w-4 h-4 text-accent" />
+          </div>
+          {currentView === "spending" && <ModeToggle mode={mode} onChange={setMode} />}
         </div>
-        
-        {/* Floating Metric Badge */}
-        <div className="flex items-center gap-1 bg-accent/10 text-accent px-2 py-1 rounded-md font-medium tracking-wider">
-          <TrendingUp className="w-3 h-3" />
-          <span>+12% vs last week</span>
-        </div>
+        {currentView && (
+          <ViewSwitcher
+            views={available}
+            currentView={currentView}
+            onSelect={setViewState}
+            onExpand={() => setExpanded(true)}
+          />
+        )}
       </div>
 
-      <div className="relative flex-1 flex mt-2">
-        {/* Y-Axis Labels & Grid Lines */}
-        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
-          {[100, 75, 50, 25, 0].map((val, i) => (
-            <div key={i} className="flex items-center w-full h-0">
-              <span className="text-[10px] text-text-muted w-8 text-right mr-3 tabular-nums">${val}</span>
-              <div className="flex-1 border-t border-dashed border-border-subtle/50" />
-            </div>
-          ))}
-        </div>
-
-        {/* Bars */}
-        <div className="flex items-end justify-between gap-4 h-full pt-4 pl-11 w-full pb-6 z-10">
-          {mockBars.map((heightPercent, idx) => (
-            <div key={idx} className="w-full h-full flex flex-col justify-end group cursor-crosshair">
-              <div
-                className="w-full bg-accent/80 group-hover:bg-accent rounded-t-sm transition-all relative"
-                style={{ height: `${heightPercent}%` }}
-              >
-                {/* Tooltip on hover */}
-                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface text-text-primary text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-md border border-border-subtle">
-                  ${heightPercent}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* X-Axis Labels */}
-        <div className="absolute bottom-0 left-11 right-0 flex justify-between px-2 text-[10px] text-text-muted font-medium uppercase tracking-wider">
-          {days.map((day) => (
-            <span key={day} className="w-full text-center">{day}</span>
-          ))}
-        </div>
+      <div className="relative mt-2 min-h-0 flex-1">
+        {currentView ? (
+          renderView()
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+            <BarChart3 className="w-8 h-8 text-text-muted/40" />
+            <p className="text-sm text-text-muted">No spending data for this account.</p>
+          </div>
+        )}
       </div>
+
+      <ExpandModal
+        open={expanded && !!currentView}
+        onClose={() => setExpanded(false)}
+        header={
+          currentView ? (
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-accent" />
+              <ViewSwitcher
+                views={available}
+                currentView={currentView}
+                onSelect={setViewState}
+              />
+            </div>
+          ) : null
+        }
+      >
+        <div className="flex h-full flex-col">
+          {currentView === "spending" && (
+            <div className="mb-3 flex justify-end">
+              <ModeToggle mode={mode} onChange={setMode} />
+            </div>
+          )}
+          <div className="min-h-0 flex-1">{renderView()}</div>
+        </div>
+      </ExpandModal>
     </div>
   );
 }

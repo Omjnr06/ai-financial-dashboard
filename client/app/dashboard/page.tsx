@@ -6,7 +6,7 @@ import { authClient } from "@/lib/auth-client";
 import { apiGet } from "@/lib/api";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { useDashboardStore } from "@/stores/useDashboardStore";
-import { SafeToSpend, Bill, AccountsSummary } from "@/types/api";
+import { SafeToSpend, Bill, AccountsSummary, HabitProfile } from "@/types/api";
 
 import { HorizontalLayout } from "@/components/dashboard/layouts/HorizontalLayout";
 import { VerticalLayout } from "@/components/dashboard/layouts/VerticalLayout";
@@ -22,7 +22,14 @@ import { AccountToggle } from "@/components/dashboard/AccountToggle";
 
 import { SlideOverChat } from "@/components/dashboard/SlideOverChat";
 
-import { mockSummary, mockAccountSafeToSpend, mockBills, mockTransactions, mockBuckets } from "@/mocks";
+import {
+  mockSummary,
+  mockAccountSafeToSpend,
+  mockBills,
+  mockTransactions,
+  mockBuckets,
+  mockHabits,
+} from "@/mocks";
 
 type Timeframe = "day" | "week" | "month";
 
@@ -44,6 +51,7 @@ export default function DashboardPage() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [buckets, setBuckets] = useState<any[]>([]);
+  const [habits, setHabits] = useState<HabitProfile | null>(null);
 
   const [isCoreLoading, setIsCoreLoading] = useState(true);
   const [isStsLoading, setIsStsLoading] = useState(true);
@@ -64,17 +72,19 @@ export default function DashboardPage() {
       setIsCoreLoading(true);
       setHasError(false);
       try {
-        const [summaryRes, billsRes, txRes, bucketsRes] = await Promise.all([
+        const [summaryRes, billsRes, txRes, bucketsRes, habitsRes] = await Promise.all([
           apiGet<AccountsSummary>("/api/dashboard/summary", mockSummary),
           apiGet<Bill[]>("/api/bills", mockBills),
           apiGet<any[]>("/api/transactions", mockTransactions),
           apiGet<any[]>("/api/buckets", mockBuckets),
+          apiGet<HabitProfile>("/api/habits", mockHabits),
         ]);
         if (cancelled) return;
         setSummary(summaryRes);
         setBills(billsRes);
         setTransactions(txRes);
         setBuckets(bucketsRes);
+        setHabits(habitsRes);
       } catch (error: any) {
         if (cancelled) return;
         if (error?.status === 401) {
@@ -178,14 +188,19 @@ export default function DashboardPage() {
           timeframe={timeframe}
           onTimeframeChange={setTimeframe}
         />
-        <SpendingGraphsTile isLoading={isCoreLoading} />
+        <SpendingGraphsTile
+          transactions={transactions}
+          habits={habits}
+          buckets={buckets}
+          isLoading={isCoreLoading}
+        />
       </div>
 
       <div className="w-full md:w-95 space-y-6">
         <LastTransactionsTile transactions={transactions} isLoading={isCoreLoading} />
         <SearchAskChatTile onOpenChat={handleOpenChatWithQuery} />
         <BillsTile bills={bills} />
-        <HabitAnalysisTile isLoading={isCoreLoading} />
+        <HabitAnalysisTile habits={habits} isLoading={isCoreLoading} />
         <SavingsBucketsTile buckets={buckets} isLoading={isCoreLoading} />
       </div>
     </div>
