@@ -68,7 +68,6 @@ def cluster_habits(db: Session, user_id: str, k: int = 4, seed: int | None = 42)
     labels = model.fit_predict(scaled)
     centers = scaler.inverse_transform(model.cluster_centers_)
 
-    # average profile across all weeks, to measure what makes each cluster distinctive
     overall_mean = {categories[j]: float(matrix[:, j].mean()) for j in range(len(categories))}
 
     clusters = []
@@ -89,6 +88,7 @@ def cluster_habits(db: Session, user_id: str, k: int = 4, seed: int | None = 42)
         "insufficientData": False,
         "k": k,
         "categories": categories,
+        "categoryMeans": {c: round(v, 3) for c, v in overall_mean.items()},
         "clusters": clusters,
         "currentClusterLabel": current_label,
     }

@@ -17,18 +17,25 @@ import type { HabitProfile } from "@/types/api";
 function HabitTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   const p = payload[0];
+  const ratio = p.value as number;
+  const share = p.payload.share as number;
+  const rel =
+    ratio >= 1
+      ? `${ratio.toFixed(1)}× your average`
+      : `${Math.round(ratio * 100)}% of your average`;
   return (
     <div className="rounded-lg border border-border-subtle bg-surface px-3 py-2 shadow-lg">
       <div className="text-xs font-medium text-text-primary">{p.payload.axis}</div>
-      <div className="text-[11px] tabular-nums text-text-muted">
-        {(p.value * 100).toFixed(0)}% of week
+      <div className="text-[11px] tabular-nums text-text-muted">{rel}</div>
+      <div className="text-[10px] tabular-nums text-text-muted">
+        {(share * 100).toFixed(0)}% of this week's spend
       </div>
     </div>
   );
 }
 
 export function HabitsView({ habits }: { habits: HabitProfile | null }) {
-  const { categories, clusters, commonMax, current } = useMemo(() => {
+  const { categories, clusters, means, commonMax, current } = useMemo(() => {
     const clusters = habits?.clusters ?? [];
     let categories = habits?.categories ?? [];
     if (!categories.length && clusters.length) {
@@ -36,16 +43,27 @@ export function HabitsView({ habits }: { habits: HabitProfile | null }) {
       clusters.forEach((c) => Object.keys(c.avgProfile ?? {}).forEach((k) => set.add(k)));
       categories = [...set];
     }
-    let commonMax = 0;
+
+    const rawMeans = habits?.categoryMeans ?? {};
+    const means: Record<string, number> = {};
+    categories.forEach((cat) => {
+      const m = rawMeans[cat];
+      means[cat] = m && m > 0 ? m : 1e-9;
+    });
+
+    let commonMax = 1;
     clusters.forEach((c) =>
       categories.forEach((cat) => {
-        commonMax = Math.max(commonMax, c.avgProfile?.[cat] ?? 0);
+        const ratio = (c.avgProfile?.[cat] ?? 0) / means[cat];
+        commonMax = Math.max(commonMax, ratio);
       })
     );
+
     return {
       categories,
       clusters,
-      commonMax: commonMax || 1,
+      means,
+      commonMax: Math.min(commonMax, 4),
       current: habits?.currentClusterLabel ?? null,
     };
   }, [habits]);
@@ -69,10 +87,10 @@ export function HabitsView({ habits }: { habits: HabitProfile | null }) {
       <div className="grid h-full grid-cols-2 gap-3">
         {clusters.map((c) => {
           const isCurrent = c.label === current;
-          const data = categories.map((cat) => ({
-            axis: cat,
-            value: c.avgProfile?.[cat] ?? 0,
-          }));
+          const data = categories.map((cat) => {
+            const share = c.avgProfile?.[cat] ?? 0;
+            return { axis: cat, value: Math.min(share / means[cat], commonMax), share };
+          });
           return (
             <div
               key={c.cluster}

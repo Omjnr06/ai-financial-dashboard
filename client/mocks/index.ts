@@ -149,6 +149,7 @@ export const mockHabits: HabitProfile = {
   insufficientData: false,
   k: 4,
   categories: ["Food & Drink", "Groceries", "Transport", "Shopping", "Entertainment"],
+  categoryMeans: { "Food & Drink": 0.255, Groceries: 0.245, Transport: 0.16, Shopping: 0.215, Entertainment: 0.125 },
   currentClusterLabel: "Dining-heavy weeks",
   clusters: [
     {
