@@ -49,7 +49,7 @@ export function CategoryView({ groups }: { groups: CatGroup[] }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="flex h-full w-full flex-col [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none [&_svg]:outline-none"
+      className="flex h-full w-full flex-col [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none [&_svg]:outline-none [&_.recharts-wrapper_*]:outline-none"
     >
       <div className="relative min-h-0 flex-1">
         <ResponsiveContainer width="100%" height="100%">

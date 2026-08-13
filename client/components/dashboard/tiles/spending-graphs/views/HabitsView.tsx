@@ -64,7 +64,7 @@ export function HabitsView({ habits }: { habits: HabitProfile | null }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="h-full w-full [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none"
+      className="h-full w-full [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none [&_.recharts-wrapper_*]:outline-none"
     >
       <div className="grid h-full grid-cols-2 gap-3">
         {clusters.map((c) => {

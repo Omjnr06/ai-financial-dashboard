@@ -26,7 +26,7 @@ import {
   mockSummary,
   mockAccountSafeToSpend,
   mockBills,
-  mockTransactions,
+  mockTransactionsPage,
   mockBuckets,
   mockHabits,
 } from "@/mocks";
@@ -75,14 +75,14 @@ export default function DashboardPage() {
         const [summaryRes, billsRes, txRes, bucketsRes, habitsRes] = await Promise.all([
           apiGet<AccountsSummary>("/api/dashboard/summary", mockSummary),
           apiGet<Bill[]>("/api/bills", mockBills),
-          apiGet<any[]>("/api/transactions", mockTransactions),
+          apiGet<any>("/api/transactions?limit=5", mockTransactionsPage(5, 0)),
           apiGet<any[]>("/api/buckets", mockBuckets),
           apiGet<HabitProfile>("/api/habits", mockHabits),
         ]);
         if (cancelled) return;
         setSummary(summaryRes);
         setBills(billsRes);
-        setTransactions(txRes);
+        setTransactions(txRes?.items ?? []);
         setBuckets(bucketsRes);
         setHabits(habitsRes);
       } catch (error: any) {
@@ -189,7 +189,6 @@ export default function DashboardPage() {
           onTimeframeChange={setTimeframe}
         />
         <SpendingGraphsTile
-          transactions={transactions}
           habits={habits}
           buckets={buckets}
           isLoading={isCoreLoading}

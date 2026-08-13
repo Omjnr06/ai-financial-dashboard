@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { CHART } from "../colors";
+import { isSpend, spendDollars } from "../aggregate";
 import type { Tx } from "../types";
 
 const DAY_MS = 86400000;
@@ -71,9 +72,9 @@ const AnomalyDot = (props: any) => {
 
 export function AnomalyView({ transactions }: { transactions: Tx[] }) {
   const { normal, anomalies, xDomain, yMax } = useMemo(() => {
-    const pts = transactions.map((t) => ({
+    const pts = transactions.filter(isSpend).map((t) => ({
       x: new Date(t.dateOf).getTime(),
-      y: Math.abs(t.amountToCent) / 100,
+      y: spendDollars(t),
       isAnomaly: !!t.isAnomaly,
       merchantName: t.merchantName,
     }));
@@ -96,7 +97,7 @@ export function AnomalyView({ transactions }: { transactions: Tx[] }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
-      className="flex h-full w-full flex-col [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none [&_svg]:outline-none"
+      className="flex h-full w-full flex-col [&_.recharts-wrapper]:outline-none [&_.recharts-surface]:outline-none [&_svg]:outline-none [&_.recharts-wrapper_*]:outline-none"
     >
       <div className="min-h-0 flex-1">
         <ResponsiveContainer width="100%" height="100%">

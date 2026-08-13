@@ -138,3 +138,29 @@ export interface ForecastBands {
   samplePaths?: number[][];
 }
 
+
+export interface CompletionBin { week: number; count: number; }
+export interface GoalDistribution {
+  alreadyReached: boolean;
+  insufficientHistory: boolean;
+  p10Weeks: number | null;
+  medianWeeks: number | null;
+  p90Weeks: number | null;
+  probabilityWithinHorizon: number | null;
+  horizonWeeks: number;
+  simulations: number;
+  savingsDeltaCent: number;
+  histogram: CompletionBin[];
+  historySample: number[];
+}
+
+export interface SpendWeekly { weekStart: string; spentCents: number; }
+export interface SpendMonthly { month: string; spentCents: number; }
+export interface SpendMerchant { name: string; spentCents: number; }
+export interface SpendCategory { category: string; spentCents: number; merchants: SpendMerchant[]; }
+export interface SpendPoint { dateOf: string; amountToCent: number; merchantName: string | null; isAnomaly: boolean; }
+
+export interface SpendSummary {
+  weekly: SpendWeekly[]; monthly: SpendMonthly[];
+  categories: SpendCategory[]; recentPoints: SpendPoint[]; hasSpend: boolean;
+}

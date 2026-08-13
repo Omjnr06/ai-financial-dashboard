@@ -1,4 +1,4 @@
-import { Bill, SafeToSpend, AccountsSummary, HabitProfile, ForecastBands } from "@/types/api";
+import { Bill, SafeToSpend, AccountsSummary, HabitProfile, GoalDistribution, SpendSummary } from "@/types/api";
 
 // 1. Safe To Spend (aggregate across spending accounts — matches mockSummary.aggregateSafeToSpend)
 export const mockSafeToSpend: SafeToSpend = {
@@ -26,7 +26,7 @@ export const mockBuckets = [
   { id: "b3", name: "Emergency", targetToCent: 100000, currentToCent: 2000 }    // 2%
 ];
 
-// 4. Transactions (student merchants, ~12 weeks, category + isAnomaly + accountId)
+// 4. Transactions (Plaid convention: spending POSITIVE, income NEGATIVE)
 type MockTx = {
   id: string;
   accountId: string;
@@ -71,19 +71,19 @@ function buildMockTransactions(): MockTx[] {
         accountId: SPEND_ACCOUNTS[(week + i) % SPEND_ACCOUNTS.length],
         merchantName: m,
         category: c,
-        amountToCent: -cents,
+        amountToCent: cents,
         dateOf: isoDaysAgo(base + (i % 6)),
         isAnomaly: false,
       });
     });
   }
   [2, 32, 62].forEach((d) =>
-    out.push({ id: `tx-${seq++}`, accountId: "acc-chequing", merchantName: "Spotify", category: "Subscriptions", amountToCent: -1099, dateOf: isoDaysAgo(d), isAnomaly: false })
+    out.push({ id: `tx-${seq++}`, accountId: "acc-chequing", merchantName: "Spotify", category: "Subscriptions", amountToCent: 1099, dateOf: isoDaysAgo(d), isAnomaly: false })
   );
-  out.push({ id: `tx-${seq++}`, accountId: "acc-visa", merchantName: "Best Buy", category: "Shopping", amountToCent: -28999, dateOf: isoDaysAgo(5), isAnomaly: true });
-  out.push({ id: `tx-${seq++}`, accountId: "acc-visa", merchantName: "Air Canada", category: "Travel", amountToCent: -41200, dateOf: isoDaysAgo(24), isAnomaly: true });
-  out.push({ id: `tx-${seq++}`, accountId: "acc-chequing", merchantName: "Apple", category: "Shopping", amountToCent: -15900, dateOf: isoDaysAgo(48), isAnomaly: true });
-  out.push({ id: `tx-${seq++}`, accountId: "acc-chequing", merchantName: "Payroll", category: "Income", amountToCent: 120000, dateOf: isoDaysAgo(14), isAnomaly: false });
+  out.push({ id: `tx-${seq++}`, accountId: "acc-visa", merchantName: "Best Buy", category: "Shopping", amountToCent: 28999, dateOf: isoDaysAgo(5), isAnomaly: true });
+  out.push({ id: `tx-${seq++}`, accountId: "acc-visa", merchantName: "Air Canada", category: "Travel", amountToCent: 41200, dateOf: isoDaysAgo(24), isAnomaly: true });
+  out.push({ id: `tx-${seq++}`, accountId: "acc-chequing", merchantName: "Apple", category: "Shopping", amountToCent: 15900, dateOf: isoDaysAgo(48), isAnomaly: true });
+  out.push({ id: `tx-${seq++}`, accountId: "acc-chequing", merchantName: "Payroll", category: "Income", amountToCent: -120000, dateOf: isoDaysAgo(14), isAnomaly: false });
 
   return out.sort((a, b) => (a.dateOf < b.dateOf ? 1 : -1));
 }
@@ -178,24 +178,10 @@ export const mockHabits: HabitProfile = {
   ],
 };
 
-
-// 7. Monte Carlo savings forecast — per-week percentile bands (mock)
-// Gaussian cone: p50 drifts up by weeklyMean, spread grows with sqrt(week).
-// Matches the /api/forecast/goal/{id}/bands contract.
-const Z = { p10: -1.2816, p25: -0.6745, p75: 0.6745, p90: 1.2816 };
-
-function normCdf(z: number) {
-  const t = 1 / (1 + 0.2316419 * Math.abs(z));
-  const d = 0.3989423 * Math.exp((-z * z) / 2);
-  const p =
-    d *
-    t *
-    (0.3193815 +
-      t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
-  return z > 0 ? 1 - p : p;
-}
-
-function hashStr(str: string) {
+// 7. Goal-completion distribution (mock) — mirrors /api/forecast/goal/{id}/distribution
+// bootstrap-resamples a synthetic weekly-savings history, shifts each draw by the
+// what-if delta, and returns the completion-week distribution + the history sample.
+function fdHash(str: string) {
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) {
     h ^= str.charCodeAt(i);
@@ -203,92 +189,206 @@ function hashStr(str: string) {
   }
   return h >>> 0;
 }
-
-function mulberry32(a: number) {
+function fdRng(seed: number) {
+  let a = seed >>> 0;
   return function () {
-    a |= 0;
     a = (a + 0x6d2b79f5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+function fdPct(sorted: number[], q: number) {
+  if (!sorted.length) return null;
+  const i = (sorted.length - 1) * q;
+  const lo = Math.floor(i);
+  const hi = Math.ceil(i);
+  return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+}
 
-export function mockForecastBands(bucket: {
-  id: string;
-  name: string;
-  targetToCent: number;
-  currentToCent: number;
-}): ForecastBands {
-  const target = bucket.targetToCent;
-  const current = bucket.currentToCent;
-  const remaining = Math.max(target - current, 1);
-  const weeklyMean = Math.max(300, remaining / 32);
-  const weeklySd = weeklyMean * 0.85;
-
-  const crossWeek = (z: number) => {
-    for (let w = 1; w <= 200; w++) {
-      const p50 = current + weeklyMean * w;
-      const sigma = weeklySd * Math.sqrt(w);
-      if (p50 + z * sigma >= target) return w;
-    }
-    return null;
-  };
-  const medianWeeks = crossWeek(0);
-  const p90Weeks = crossWeek(Z.p10);
-  const horizon = Math.min(104, Math.max(12, (p90Weeks ?? 52) + 4));
-
-  const bands = [];
-  for (let w = 0; w <= horizon; w++) {
-    const p50 = current + weeklyMean * w;
-    const sigma = weeklySd * Math.sqrt(w);
-    const at = (z: number) => Math.max(0, Math.round(p50 + z * sigma));
-    bands.push({
-      week: w,
-      p10Cent: at(Z.p10),
-      p25Cent: at(Z.p25),
-      p50Cent: Math.round(p50),
-      p75Cent: at(Z.p75),
-      p90Cent: at(Z.p90),
-    });
-  }
-
-  const p50H = current + weeklyMean * horizon;
-  const sigmaH = weeklySd * Math.sqrt(horizon) || 1;
-  const probabilityWithinHorizon = Math.min(
-    1,
-    Math.max(0, 1 - normCdf((target - p50H) / sigmaH))
-  );
-
-  const rand = mulberry32(hashStr(bucket.id));
+export function mockGoalDistribution(
+  bucket: { id: string; name: string; targetToCent: number; currentToCent: number },
+  savingsDeltaCent = 0
+): GoalDistribution {
+  const horizon = 52;
+  const block = 8;
+  const remaining = Math.max(bucket.targetToCent - bucket.currentToCent, 1);
+  const rng = fdRng(fdHash(bucket.id));
   const gauss = () => {
     let u = 0;
     let v = 0;
-    while (u === 0) u = rand();
-    while (v === 0) v = rand();
+    while (u === 0) u = rng();
+    while (v === 0) v = rng();
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
   };
-  const samplePaths: number[][] = [];
-  for (let s = 0; s < 6; s++) {
-    const path = [current];
-    let bal = current;
-    for (let w = 1; w <= horizon; w++) {
-      bal = Math.max(0, bal + weeklyMean + gauss() * weeklySd);
-      path.push(Math.round(bal));
+
+  // LUMPY synthetic history that mimics real biweekly income: most weeks are
+  // net-negative (spending), with a paycheck landing every ~2 weeks. Mean is
+  // tuned to make the goal reachable. This reproduces the real-data regime so
+  // block bootstrap is exercised in mock mode too.
+  const targetWeeks = 26;
+  const meanNet = Math.max(300, remaining / targetWeeks); // desired avg weekly net
+  const leanSpend = 32000; // ~$320 net-negative on a non-paycheck week
+  const historySample: number[] = [];
+  for (let w = 0; w < 26; w++) {
+    if (w % 2 === 0) {
+      // paycheck week: covers the two-week cycle plus the desired surplus
+      historySample.push(Math.round(2 * meanNet + leanSpend + gauss() * 8000));
+    } else {
+      historySample.push(Math.round(-leanSpend + gauss() * 8000));
     }
-    samplePaths.push(path);
   }
 
+  if (bucket.targetToCent <= bucket.currentToCent) {
+    return {
+      alreadyReached: true,
+      insufficientHistory: false,
+      p10Weeks: 0,
+      medianWeeks: 0,
+      p90Weeks: 0,
+      probabilityWithinHorizon: 1,
+      horizonWeeks: horizon,
+      simulations: 0,
+      savingsDeltaCent,
+      histogram: [],
+      historySample,
+    };
+  }
+
+  const n = historySample.length;
+  const bl = Math.max(1, Math.min(block, n));
+  const paths = 4000;
+  const finishes: number[] = [];
+  let within = 0;
+  for (let p = 0; p < paths; p++) {
+    let bal = bucket.currentToCent;
+    let done = -1;
+    let w = 0;
+    while (w < horizon && done < 0) {
+      const start = Math.floor(rng() * n);
+      for (let k = 0; k < bl && w < horizon; k++) {
+        bal += historySample[(start + k) % n] + savingsDeltaCent;
+        w++;
+        if (bal >= bucket.targetToCent) {
+          done = w;
+          break;
+        }
+      }
+    }
+    if (done > 0) {
+      finishes.push(done);
+      within++;
+    }
+  }
+  finishes.sort((a, b) => a - b);
+
+  const counts: Record<number, number> = {};
+  finishes.forEach((w) => (counts[w] = (counts[w] || 0) + 1));
+  const histogram = Object.entries(counts)
+    .map(([w, c]) => ({ week: Number(w), count: c }))
+    .sort((a, b) => a.week - b.week);
+
   return {
-    bucketId: bucket.id,
-    bucketName: bucket.name,
-    targetCent: target,
-    currentCent: current,
+    alreadyReached: false,
+    insufficientHistory: false,
+    p10Weeks: finishes.length ? Math.round(fdPct(finishes, 0.1)!) : null,
+    medianWeeks: finishes.length ? Math.round(fdPct(finishes, 0.5)!) : null,
+    p90Weeks: finishes.length ? Math.round(fdPct(finishes, 0.9)!) : null,
+    probabilityWithinHorizon: paths ? within / paths : 0,
     horizonWeeks: horizon,
-    medianWeeks,
-    p90Weeks,
-    probabilityWithinHorizon,
-    bands,
-    samplePaths,
+    simulations: paths,
+    savingsDeltaCent,
+    histogram,
+    historySample,
+  };
+}
+
+
+// 8. Spend summary (mock) — mirrors /api/transactions/summary. Aggregates the
+// mock transactions (Plaid convention: spend positive) the same way the backend
+// GROUP BY does, optionally scoped to an account.
+function startOfWeekMonISO(d: Date): string {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x.toISOString().slice(0, 10);
+}
+
+export function mockSpendSummary(accountId?: string | null): SpendSummary {
+  const spend = mockTransactions.filter(
+    (t) => t.amountToCent > 0 && (!accountId || t.accountId === accountId)
+  );
+
+  // weekly
+  const wk: Record<string, number> = {};
+  spend.forEach((t) => {
+    const k = startOfWeekMonISO(new Date(t.dateOf));
+    wk[k] = (wk[k] || 0) + t.amountToCent;
+  });
+  const weekly = Object.entries(wk)
+    .map(([weekStart, spentCents]) => ({ weekStart, spentCents }))
+    .sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
+
+  // monthly
+  const mo: Record<string, number> = {};
+  spend.forEach((t) => {
+    const d = new Date(t.dateOf);
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    mo[k] = (mo[k] || 0) + t.amountToCent;
+  });
+  const monthly = Object.entries(mo)
+    .map(([month, spentCents]) => ({ month, spentCents }))
+    .sort((a, b) => (a.month < b.month ? -1 : 1));
+
+  // categories + merchants
+  const catMap: Record<string, { spentCents: number; m: Record<string, number> }> = {};
+  spend.forEach((t) => {
+    const c = t.category || "Other";
+    const m = t.merchantName || "Unknown";
+    const entry = (catMap[c] = catMap[c] || { spentCents: 0, m: {} });
+    entry.spentCents += t.amountToCent;
+    entry.m[m] = (entry.m[m] || 0) + t.amountToCent;
+  });
+  const categories = Object.entries(catMap)
+    .map(([category, e]) => ({
+      category,
+      spentCents: e.spentCents,
+      merchants: Object.entries(e.m)
+        .map(([name, spentCents]) => ({ name, spentCents }))
+        .sort((a, b) => b.spentCents - a.spentCents),
+    }))
+    .sort((a, b) => b.spentCents - a.spentCents);
+
+  // recent points for the scatter (already spend-only)
+  const recentPoints = spend
+    .slice()
+    .sort((a, b) => (a.dateOf < b.dateOf ? 1 : -1))
+    .slice(0, 400)
+    .map((t) => ({
+      dateOf: t.dateOf,
+      amountToCent: t.amountToCent,
+      merchantName: t.merchantName,
+      isAnomaly: t.isAnomaly,
+    }));
+
+  return {
+    weekly,
+    monthly,
+    categories,
+    recentPoints,
+    hasSpend: weekly.length > 0 || categories.length > 0,
+  };
+}
+
+// paginated transactions envelope (mock) — mirrors /api/transactions
+export function mockTransactionsPage(limit = 50, offset = 0, accountId?: string | null) {
+  const all = mockTransactions.filter((t) => !accountId || t.accountId === accountId);
+  const items = all.slice(offset, offset + limit);
+  return {
+    items,
+    total: all.length,
+    limit,
+    offset,
+    hasMore: offset + items.length < all.length,
   };
 }

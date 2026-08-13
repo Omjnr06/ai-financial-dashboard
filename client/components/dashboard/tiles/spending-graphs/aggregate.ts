@@ -1,5 +1,9 @@
 import type { Tx, Bucket, CatGroup } from "./types";
 
+export const isSpend = (t: { amountToCent: number }) => t.amountToCent > 0;
+export const spendDollars = (t: { amountToCent: number }) =>
+  Math.abs(t.amountToCent) / 100;
+
 export function startOfWeekMon(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
@@ -8,7 +12,6 @@ export function startOfWeekMon(d: Date): Date {
   return x;
 }
 
-// aggregate by week for graphs where applicable
 export function aggregateByWeek(tx: Tx[], weeks = 8): Bucket[] {
   const curStart = startOfWeekMon(new Date());
   const buckets: Bucket[] = [];
@@ -27,12 +30,11 @@ export function aggregateByWeek(tx: Tx[], weeks = 8): Bucket[] {
   for (const t of tx) {
     const key = startOfWeekMon(new Date(t.dateOf)).toISOString().slice(0, 10);
     const bi = index.get(key);
-    if (bi !== undefined) buckets[bi].total += Math.abs(t.amountToCent) / 100;
+    if (bi !== undefined) buckets[bi].total += spendDollars(t);
   }
   return buckets;
 }
 
-// aggregrate by month. For month view of graphs where applicable
 export function aggregateByMonth(tx: Tx[], months = 6): Bucket[] {
   const now = new Date();
   const buckets: Bucket[] = [];
@@ -51,12 +53,11 @@ export function aggregateByMonth(tx: Tx[], months = 6): Bucket[] {
     const d = new Date(t.dateOf);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     const bi = index.get(key);
-    if (bi !== undefined) buckets[bi].total += Math.abs(t.amountToCent) / 100;
+    if (bi !== undefined) buckets[bi].total += spendDollars(t);
   }
   return buckets;
 }
 
-// group by transaction category
 export function groupByCategory(tx: Tx[]): CatGroup[] {
   const map = new Map<string, Map<string, number>>();
   for (const t of tx) {
@@ -64,7 +65,7 @@ export function groupByCategory(tx: Tx[]): CatGroup[] {
     const merch = t.merchantName ?? "Unknown";
     if (!map.has(cat)) map.set(cat, new Map());
     const mm = map.get(cat)!;
-    mm.set(merch, (mm.get(merch) ?? 0) + Math.abs(t.amountToCent) / 100);
+    mm.set(merch, (mm.get(merch) ?? 0) + spendDollars(t));
   }
   const groups: CatGroup[] = [];
   for (const [category, mm] of map) {

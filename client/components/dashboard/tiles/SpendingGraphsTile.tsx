@@ -1,16 +1,18 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BarChart3 } from "lucide-react";
+import { apiGet } from "@/lib/api";
+import { mockSpendSummary } from "@/mocks";
 import { useDashboardStore } from "@/stores/useDashboardStore";
 
-import type { HabitProfile } from "@/types/api";
-import type { ViewId, Mode, Tx } from "./spending-graphs/types";
+import type { HabitProfile, SpendSummary } from "@/types/api";
+import type { ViewId, Mode } from "./spending-graphs/types";
 import { getAvailableViews } from "./spending-graphs/registry";
-import { aggregateByWeek, aggregateByMonth, groupByCategory } from "./spending-graphs/aggregate";
 import { ModeToggle } from "./spending-graphs/parts/ModeToggle";
 import { ViewSwitcher } from "./spending-graphs/parts/ViewSwitcher";
 import { ExpandModal } from "./spending-graphs/parts/ExpandModal";
+import { VIEW_META } from "./spending-graphs/registry";
 import { SpendingView } from "./spending-graphs/views/SpendingView";
 import { CategoryView } from "./spending-graphs/views/CategoryView";
 import { AnomalyView } from "./spending-graphs/views/AnomalyView";
@@ -25,50 +27,84 @@ interface BucketLite {
 }
 
 interface SpendingGraphsTileProps {
-  transactions: Tx[];
   habits: HabitProfile | null;
   buckets: BucketLite[];
   isLoading: boolean;
 }
 
-export function SpendingGraphsTile({ transactions, habits, buckets, isLoading }: SpendingGraphsTileProps) {
+const monthLabel = (ym: string) => {
+  const [y, m] = ym.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, 1).toLocaleDateString(undefined, { month: "short" });
+};
+const weekLabel = (iso: string) =>
+  new Date(iso + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+export function SpendingGraphsTile({ habits, buckets, isLoading }: SpendingGraphsTileProps) {
   const selectedAccountId = useDashboardStore((s) => s.selectedAccountId);
   const [mode, setMode] = useState<Mode>("week");
   const [viewState, setViewState] = useState<ViewId | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  const scopedTx = useMemo(() => {
-    const spend = (transactions ?? []).filter((t) => t.amountToCent < 0);
-    if (selectedAccountId === null) return spend;
-    return spend.filter((t) => t.accountId === selectedAccountId);
-  }, [transactions, selectedAccountId]);
+  const [summary, setSummary] = useState<SpendSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
+  // self-fetch pre-aggregated spend rollups; refetch when the account changes
+  useEffect(() => {
+    let cancelled = false;
+    setSummaryLoading(true);
+    const qs = selectedAccountId ? `?accountId=${selectedAccountId}` : "";
+    apiGet<SpendSummary>(
+      `/api/transactions/summary${qs}`,
+      mockSpendSummary(selectedAccountId)
+    )
+      .then((res) => !cancelled && setSummary(res))
+      .catch(() => !cancelled && setSummary(null))
+      .finally(() => !cancelled && setSummaryLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAccountId]);
+
+  // map server rollups -> existing view prop shapes (dollars)
+  const spendingData = useMemo(() => {
+    if (!summary) return [];
+    const rows = mode === "week" ? summary.weekly : summary.monthly;
+    return rows.map((r: any) => ({
+      key: mode === "week" ? r.weekStart : r.month,
+      label: mode === "week" ? weekLabel(r.weekStart) : monthLabel(r.month),
+      total: r.spentCents / 100,
+    }));
+  }, [summary, mode]);
+
+  const categoryGroups = useMemo(() => {
+    if (!summary) return [];
+    return summary.categories.map((c) => ({
+      category: c.category,
+      total: c.spentCents / 100,
+      merchants: c.merchants.map((m) => ({ name: m.name, total: m.spentCents / 100 })),
+    }));
+  }, [summary]);
+
+  const anomalyPoints = useMemo(
+    () => (summary?.recentPoints ?? []).map((p) => ({ ...p })),
+    [summary]
+  );
+
+  const hasSpend = !!summary?.hasSpend;
   const hasHabits =
     !!habits && !habits.insufficientData && (habits.clusters?.length ?? 0) > 0;
   const hasForecast = (buckets?.length ?? 0) > 0;
 
   const available = useMemo(
     () =>
-      getAvailableViews(
-        scopedTx.length > 0,
-        selectedAccountId === null,
-        hasHabits,
-        hasForecast
-      ),
-    [scopedTx.length, selectedAccountId, hasHabits, hasForecast]
+      getAvailableViews(hasSpend, selectedAccountId === null, hasHabits, hasForecast),
+    [hasSpend, selectedAccountId, hasHabits, hasForecast]
   );
 
   const currentView: ViewId | null =
     viewState && available.includes(viewState) ? viewState : available[0] ?? null;
 
-  const spendingData = useMemo(
-    () => (mode === "week" ? aggregateByWeek(scopedTx) : aggregateByMonth(scopedTx)),
-    [scopedTx, mode]
-  );
-
-  const categoryGroups = useMemo(() => groupByCategory(scopedTx), [scopedTx]);
-
-  if (isLoading) {
+  if (isLoading || summaryLoading) {
     return (
       <div className="h-140 animate-pulse rounded-3xl border border-border-subtle bg-surface-raised p-6">
         <div className="mb-4 h-4 w-1/3 rounded bg-surface" />
@@ -80,7 +116,7 @@ export function SpendingGraphsTile({ transactions, habits, buckets, isLoading }:
   const renderView = () => {
     if (currentView === "spending") return <SpendingView data={spendingData} mode={mode} />;
     if (currentView === "category") return <CategoryView groups={categoryGroups} />;
-    if (currentView === "anomaly") return <AnomalyView transactions={scopedTx} />;
+    if (currentView === "anomaly") return <AnomalyView transactions={anomalyPoints} />;
     if (currentView === "habits") return <HabitsView habits={habits} />;
     if (currentView === "forecast") return <ForecastView buckets={buckets} />;
     return null;
