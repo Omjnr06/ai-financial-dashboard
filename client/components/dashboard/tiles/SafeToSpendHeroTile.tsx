@@ -45,9 +45,7 @@ export function SafeToSpendHeroTile({
   }
 
   if (!isSpendingView && selectedAccount) {
-    return (
-      <AccountDetailHero account={selectedAccount} />
-    );
+    return <AccountDetailHero account={selectedAccount} />;
   }
 
   if (error || !data) {
@@ -61,8 +59,13 @@ export function SafeToSpendHeroTile({
   }
 
   const hasNoBills = bills.length === 0;
-
   const showNetWorth = selectedAccount == null && netWorth != null;
+
+  const allZero =
+    data.incomeCent === 0 &&
+    data.upcomingBillsCent === 0 &&
+    data.goalAllocationsCent === 0 &&
+    data.thresholdCent === 0;
 
   return (
     <div className="bg-surface-raised rounded-3xl p-6 md:p-8 border border-border-subtle flex flex-col justify-start relative overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1.5 hover:translate-x-1.5 hover:shadow-2xl hover:shadow-accent/10 hover:border-accent">
@@ -161,30 +164,43 @@ export function SafeToSpendHeroTile({
             transition={{ duration: 0.25 }}
             className="overflow-hidden mt-4 pt-4 border-t border-border-subtle space-y-2 text-xs"
           >
-            <div className="flex justify-between text-text-muted">
-              <span>Income ({timeframe}):</span>
-              <span className="text-accent font-medium tabular-nums">
-                +{formatCents(data.incomeCent)}
-              </span>
-            </div>
-            <div className="flex justify-between text-text-muted">
-              <span>Upcoming Bills ({timeframe}):</span>
-              <span className="text-danger font-medium tabular-nums">
-                -{formatCents(data.upcomingBillsCent)}
-              </span>
-            </div>
-            <div className="flex justify-between text-text-muted">
-              <span>Savings Allocations:</span>
-              <span className="text-warning font-medium tabular-nums">
-                -{formatCents(data.goalAllocationsCent)}
-              </span>
-            </div>
-            <div className="flex justify-between text-text-muted">
-              <span>Safety Cushion Reserve:</span>
-              <span className="text-text-primary font-medium tabular-nums">
-                -{formatCents(data.thresholdCent)}
-              </span>
-            </div>
+            {data.incomeCent > 0 && (
+              <div className="flex justify-between text-text-muted">
+                <span>Income ({timeframe}):</span>
+                <span className="text-accent font-medium tabular-nums">
+                  +{formatCents(data.incomeCent)}
+                </span>
+              </div>
+            )}
+            {data.upcomingBillsCent > 0 && (
+              <div className="flex justify-between text-text-muted">
+                <span>Upcoming Bills ({timeframe}):</span>
+                <span className="text-danger font-medium tabular-nums">
+                  -{formatCents(data.upcomingBillsCent)}
+                </span>
+              </div>
+            )}
+            {data.goalAllocationsCent > 0 && (
+              <div className="flex justify-between text-text-muted">
+                <span>Savings Allocations:</span>
+                <span className="text-warning font-medium tabular-nums">
+                  -{formatCents(data.goalAllocationsCent)}
+                </span>
+              </div>
+            )}
+            {data.thresholdCent > 0 && (
+              <div className="flex justify-between text-text-muted">
+                <span>Safety Cushion Reserve:</span>
+                <span className="text-text-primary font-medium tabular-nums">
+                  -{formatCents(data.thresholdCent)}
+                </span>
+              </div>
+            )}
+            {allZero && (
+              <div className="text-text-muted text-center py-2">
+                Nothing reducing your safe-to-spend right now.
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -225,7 +241,6 @@ export function SafeToSpendHeroTile({
   );
 }
 
-// per-account hero for non-spending accounts (credit / savings / investment / loan)
 function AccountDetailHero({ account }: { account: Account }) {
   const config = getAccountConfig(account);
 

@@ -6,7 +6,7 @@ import { authClient } from "@/lib/auth-client";
 import { apiGet } from "@/lib/api";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { useDashboardStore } from "@/stores/useDashboardStore";
-import { SafeToSpend, Bill, AccountsSummary } from "@/types/api";
+import { SafeToSpend, Bill, AccountsSummary, HabitProfile } from "@/types/api";
 
 import { HorizontalLayout } from "@/components/dashboard/layouts/HorizontalLayout";
 import { VerticalLayout } from "@/components/dashboard/layouts/VerticalLayout";
@@ -22,13 +22,22 @@ import { AccountToggle } from "@/components/dashboard/AccountToggle";
 
 import { SlideOverChat } from "@/components/dashboard/SlideOverChat";
 
-import { mockSummary, mockAccountSafeToSpend, mockBills, mockTransactions, mockBuckets } from "@/mocks";
+import {
+  mockSummary,
+  mockAccountSafeToSpend,
+  mockBills,
+  mockTransactionsPage,
+  mockBuckets,
+  mockHabits,
+} from "@/mocks";
 
 type Timeframe = "day" | "week" | "month";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, isPending: isAuthPending } = authClient.useSession();
+  const userId = session?.user?.id ?? null;
+
   const { layoutId } = useThemeStore();
   const selectedAccountId = useDashboardStore((s) => s.selectedAccountId);
 
@@ -42,72 +51,90 @@ export default function DashboardPage() {
   const [bills, setBills] = useState<Bill[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [buckets, setBuckets] = useState<any[]>([]);
+  const [habits, setHabits] = useState<HabitProfile | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isCoreLoading, setIsCoreLoading] = useState(true);
+  const [isStsLoading, setIsStsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    if (!isAuthPending && !session) {
+    if (!isAuthPending && !userId) {
       router.push("/");
     }
-  }, [session, isAuthPending, router]);
+  }, [userId, isAuthPending, router]);
 
+  // core dashboard data — runs once per user, not on every session tick
   useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+
     async function fetchDashboardData() {
-      setIsLoading(true);
+      setIsCoreLoading(true);
       setHasError(false);
       try {
-        const [summaryRes, billsRes, txRes, bucketsRes] = await Promise.all([
+        const [summaryRes, billsRes, txRes, bucketsRes, habitsRes] = await Promise.all([
           apiGet<AccountsSummary>("/api/dashboard/summary", mockSummary),
           apiGet<Bill[]>("/api/bills", mockBills),
-          apiGet<any[]>("/api/transactions", mockTransactions),
+          apiGet<any>("/api/transactions?limit=5", mockTransactionsPage(5, 0)),
           apiGet<any[]>("/api/buckets", mockBuckets),
+          apiGet<HabitProfile>("/api/habits", mockHabits),
         ]);
-
+        if (cancelled) return;
         setSummary(summaryRes);
         setBills(billsRes);
-        setTransactions(txRes);
+        setTransactions(txRes?.items ?? []);
         setBuckets(bucketsRes);
+        setHabits(habitsRes);
       } catch (error: any) {
+        if (cancelled) return;
         if (error?.status === 401) {
           router.push("/");
           return;
         }
         setHasError(true);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsCoreLoading(false);
       }
     }
 
-    if (session) {
-      fetchDashboardData();
-    }
-  }, [session, router]);
+    fetchDashboardData();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, router]);
 
-  const selectedAccount =
-    selectedAccountId && summary
-      ? summary.accounts.find((a) => a.id === selectedAccountId) ?? null
-      : null;
-
+  // aggregate STS — refetches only when user or timeframe changes
   useEffect(() => {
-    async function fetchAggregateSafeToSpend() {
+    if (!userId) return;
+    let cancelled = false;
+
+    async function fetchAggregate() {
+      setIsStsLoading(true);
       try {
         const res = await apiGet<SafeToSpend>(
           `/api/dashboard/safe-to-spend?timeframe=${timeframe}`,
           mockSummary.aggregateSafeToSpend
         );
-        setAggregateSafeToSpend(res);
+        if (!cancelled) setAggregateSafeToSpend(res);
       } catch {
-        setAggregateSafeToSpend(null);
+        if (!cancelled) setAggregateSafeToSpend(null);
+      } finally {
+        if (!cancelled) setIsStsLoading(false);
       }
     }
-    if (session) {
-      fetchAggregateSafeToSpend();
-    }
-  }, [session, timeframe]);
 
+    fetchAggregate();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, timeframe]);
+
+  // per-account STS — refetches only when the selected account or timeframe changes
   useEffect(() => {
-    async function fetchAccountSafeToSpend() {
+    if (!userId) return;
+    let cancelled = false;
+
+    async function fetchAccountSts() {
       const account =
         selectedAccountId && summary
           ? summary.accounts.find((a) => a.id === selectedAccountId) ?? null
@@ -121,15 +148,17 @@ export default function DashboardPage() {
           `/api/dashboard/safe-to-spend?accountId=${account.id}&timeframe=${timeframe}`,
           mockAccountSafeToSpend
         );
-        setAccountSafeToSpend(res);
+        if (!cancelled) setAccountSafeToSpend(res);
       } catch {
-        setAccountSafeToSpend(null);
+        if (!cancelled) setAccountSafeToSpend(null);
       }
     }
-    if (session) {
-      fetchAccountSafeToSpend();
-    }
-  }, [selectedAccountId, summary, session, timeframe]);
+
+    fetchAccountSts();
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, selectedAccountId, timeframe, summary]);
 
   const handleOpenChatWithQuery = (query?: string) => {
     if (query) setChatInitialQuery(query);
@@ -137,6 +166,11 @@ export default function DashboardPage() {
   };
 
   const LayoutWrapper = layoutId === "vertical" ? VerticalLayout : HorizontalLayout;
+
+  const selectedAccount =
+    selectedAccountId && summary
+      ? summary.accounts.find((a) => a.id === selectedAccountId) ?? null
+      : null;
 
   const heroData: SafeToSpend | null =
     selectedAccount === null ? aggregateSafeToSpend : accountSafeToSpend;
@@ -147,22 +181,26 @@ export default function DashboardPage() {
         <SafeToSpendHeroTile
           data={heroData}
           bills={bills}
-          isLoading={isLoading}
+          isLoading={isCoreLoading || isStsLoading}
           error={hasError}
           netWorth={summary?.netWorth ?? null}
           selectedAccount={selectedAccount}
           timeframe={timeframe}
           onTimeframeChange={setTimeframe}
         />
-        <SpendingGraphsTile isLoading={isLoading} />
+        <SpendingGraphsTile
+          habits={habits}
+          buckets={buckets}
+          isLoading={isCoreLoading}
+        />
       </div>
 
       <div className="w-full md:w-95 space-y-6">
-        <LastTransactionsTile transactions={transactions} isLoading={isLoading} />
+        <LastTransactionsTile transactions={transactions} isLoading={isCoreLoading} />
         <SearchAskChatTile onOpenChat={handleOpenChatWithQuery} />
         <BillsTile bills={bills} />
-        <HabitAnalysisTile isLoading={isLoading} />
-        <SavingsBucketsTile buckets={buckets} isLoading={isLoading} />
+        <HabitAnalysisTile habits={habits} isLoading={isCoreLoading} />
+        <SavingsBucketsTile buckets={buckets} isLoading={isCoreLoading} />
       </div>
     </div>
   );

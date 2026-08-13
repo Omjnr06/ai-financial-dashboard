@@ -3,7 +3,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from sqlmodel import SQLModel                 
 from alembic import context
-from app.models import Profiles, PlaidItem, Accounts, Transactions, Bucket, Bills, IncomeSource #importing all the table models
+from app.models import Profiles, PlaidItem, Accounts, Transactions, Bucket, Bills, IncomeSource,HabitProfile #importing all the table models
 from app.core.config import settings
 
 # this is the Alembic Config object, which provides

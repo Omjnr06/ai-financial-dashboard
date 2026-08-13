@@ -126,8 +126,13 @@ def calculate_safe_to_spend(db: Session, user_id: str, account_id: str | None = 
     )
 
     # get the goal amounts
-    buckets_query = select(func.sum(Bucket.currentToCent)).where(
-        Bucket.userId == user_id,
+    buckets_query = (
+        select(func.sum(Bucket.currentToCent))
+        .join(Accounts, Bucket.accountId == Accounts.id)
+        .where(
+            Bucket.userId == user_id,
+            Accounts.accountType == AccountType.spending,
+        )
     )
     if account_id is not None:
         buckets_query = buckets_query.where(Bucket.accountId == account_id)
