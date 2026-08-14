@@ -21,3 +21,8 @@ node_modules/
 cookies.txt
 cookiesB.txt
 testing.md
+
+# fastembed / HF model cache
+.fastembed_cache/
+fastembed_cache/
+local_cache/
