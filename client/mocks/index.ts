@@ -1,4 +1,4 @@
-import { Bill, SafeToSpend, AccountsSummary, HabitProfile, GoalDistribution, SpendSummary } from "@/types/api";
+import { Bill, SafeToSpend, AccountsSummary, HabitProfile, GoalDistribution, SpendSummary,AssistantResponse } from "@/types/api";
 
 // 1. Safe To Spend (aggregate across spending accounts — matches mockSummary.aggregateSafeToSpend)
 export const mockSafeToSpend: SafeToSpend = {
@@ -391,5 +391,110 @@ export function mockTransactionsPage(limit = 50, offset = 0, accountId?: string 
     limit,
     offset,
     hasMore: offset + items.length < all.length,
+  };
+}
+
+export const mockAssistantSuggestions: string[] = [
+  "how much did I spend on dining",
+  "what was my biggest purchase this month",
+  "what's safe to spend this week",
+  "what's my net worth",
+  "when will I afford my new laptop",
+  "what are my spending habits",
+];
+
+export function mockAssistantAnswer(question: string): AssistantResponse {
+  const q = question.toLowerCase();
+
+  const onTopic = [
+    "spend", "spent", "dining", "food", "grocer", "transport", "shopping",
+    "entertainment", "bill", "worth", "safe", "afford", "goal", "laptop",
+    "habit", "purchase", "transaction", "budget", "money",
+  ];
+  if (!onTopic.some((k) => q.includes(k))) {
+    return {
+      answer: "That's outside what I can help with right now.",
+      intent: null,
+      confidence: 0.31,
+      suggestions: mockAssistantSuggestions,
+    };
+  }
+
+  if (q.includes("worth")) {
+    return {
+      answer: "Your net worth is $1,100.00 — $17,300.00 in assets minus $16,200.00 in debts.",
+      intent: "net_worth",
+      confidence: 0.97,
+      suggestions: null,
+    };
+  }
+
+  if (q.includes("safe")) {
+    return {
+      answer: "You've got $3,139.01 safe to spend this week.",
+      intent: "safe_to_spend",
+      confidence: 0.98,
+      suggestions: null,
+    };
+  }
+
+  if (q.includes("habit")) {
+    return {
+      answer:
+        "Your weeks sort into a few patterns: Bills-heavy weeks, Transport-heavy weeks, Shopping-heavy weeks, Entertainment-heavy weeks. Lately you're in entertainment-heavy weeks.",
+      intent: "habits",
+      confidence: 0.99,
+      suggestions: null,
+    };
+  }
+
+  if (q.includes("afford") || q.includes("goal") || q.includes("laptop")) {
+    if (q.includes("jet") || q.includes("yacht")) {
+      return {
+        answer:
+          'I couldn\'t find a goal called "private jet". Your goals are: Textbooks, New Laptop, Spring Trip, Car Down Payment.',
+        intent: "goal_forecast",
+        confidence: 0.58,
+        suggestions: null,
+      };
+    }
+    return {
+      answer:
+        "For New Laptop, you're on track — about 4 weeks at the median, with a 93% chance within a year.",
+      intent: "goal_forecast",
+      confidence: 0.99,
+      suggestions: null,
+    };
+  }
+
+  if (q.includes("biggest") || q.includes("largest") || q.includes("purchase")) {
+    return {
+      answer: "Your biggest purchase was $84.79 at Tim Hortons (Dining) on Aug 2.",
+      intent: "largest_transaction",
+      confidence: 0.98,
+      suggestions: null,
+    };
+  }
+
+  const cats: Array<[string, string]> = [
+    ["dining", "Dining"], ["food", "Dining"], ["grocer", "Groceries"],
+    ["transport", "Transport"], ["shopping", "Shopping"], ["entertainment", "Entertainment"],
+  ];
+  for (const [kw, label] of cats) {
+    if (q.includes(kw)) {
+      return {
+        answer: `${label} came to $140.18 in August 2026.`,
+        intent: "spending_by_category",
+        confidence: 0.97,
+        suggestions: null,
+      };
+    }
+  }
+
+  return {
+    answer: "You've spent $528.67 in August 2026 — mostly Transport ($190.82), Dining ($140.18).",
+    intent: "get_total_spending",
+    confidence: 0.95,
+    suggestions: null,
   };
 }

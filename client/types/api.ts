@@ -166,3 +166,23 @@ export interface SpendSummary {
   categories: SpendCategory[]; recentPoints: SpendPoint[]; hasSpend: boolean;
 }
 
+
+export interface AssistantResponse {
+  answer: string;
+  intent: string | null;
+  confidence: number;
+  suggestions: string[] | null;
+}
+
+export interface AssistantSuggestions {
+  suggestions: string[];
+}
+
+export type AssistantResult =
+  | { ok: true; data: AssistantResponse }
+  | {
+      ok: false;
+      kind: "auth" | "rate_limit" | "validation" | "network";
+      message: string;
+      retryAfter?: number;
+    };
