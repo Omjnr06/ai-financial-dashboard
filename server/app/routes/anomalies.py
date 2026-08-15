@@ -3,6 +3,7 @@ from sqlmodel import Session
 from app.core.dependencies import get_current_user
 from app.core.database import get_session
 from app.services.anomaly_detection import detect_anomalies
+from app.security.rate_limit import rate_limit
 
 router = APIRouter(prefix="/api/anomalies", tags=["anomalies"])
 
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/api/anomalies", tags=["anomalies"])
     response_description="How many transactions were scanned and flagged as anomalies",
 )
 def detect(
-    user_id: str = Depends(get_current_user),
+    user_id: str = Depends(rate_limit("anomalies")),
     db: Session = Depends(get_session),
 ) -> dict:
     """

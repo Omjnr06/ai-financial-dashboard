@@ -79,7 +79,7 @@ class Transactions(SQLModel, table = True):
     accountId: str = Field(foreign_key = "accounts.id", index = True)
     plaidTransactionId:  str | None = Field(default = None, index = True, unique = True) # nullable
     dateOf: date = Field(index=True)
-    amountToCent: int # money in = positive, money out = negative
+    amountToCent: int # money in = negative, money out = positive based on plaid
     merchantName: str  | None = Field(default=None) # nullable
     category: str  |  None = Field(default=None) # nullable
     pending: bool = Field(default=False)

@@ -3,7 +3,7 @@ from sqlmodel import Session
 from pydantic import BaseModel
 
 from app.core.database import get_session
-from app.services.assistant.security.rate_limit import rate_limit
+from app.security.rate_limit import rate_limit
 from app.services.assistant.security.guards import validate_question
 from app.services.assistant.nlu.intents import INTENTS
 from app.services.assistant.nlu.matcher import match
@@ -41,7 +41,7 @@ def _suggestions() -> list[str]:
 )
 def ask(
     payload: AskRequest,
-    user_id: str = Depends(rate_limit),
+    user_id: str = Depends(rate_limit("assistant")),
     db: Session = Depends(get_session),
 ) -> AskResponse:
     """
