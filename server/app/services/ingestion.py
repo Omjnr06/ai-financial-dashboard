@@ -1,9 +1,15 @@
 from sqlmodel import Session, select
 from plaid.model.transactions_sync_request import TransactionsSyncRequest
 from plaid.exceptions import ApiException
+
+import logging
+
 from app.integrations.plaid_client import plaid_client, decrypt_token
 from app.models import PlaidItem, Accounts, Transactions
+from app.services.anomaly_detection import detect_anomalies
+from app.services.habit_clustering import cluster_habits
 
+logger = logging.getLogger(__name__)
 
 def sync_transactions(db: Session, item_id: str) -> dict:
     item = db.exec(select(PlaidItem).where(PlaidItem.itemId == item_id)).first()
@@ -103,6 +109,12 @@ def sync_transactions(db: Session, item_id: str) -> dict:
         item.cursor = cursor
         db.add(item)
         db.commit()
+
+        try:
+            detect_anomalies(db, item.userId)
+            cluster_habits(db, item.userId)
+        except Exception as e:
+            logger.error(f"post-sync ML refresh failed for user {item.userId}: {e}")
 
         return {
             "added": added_count,
