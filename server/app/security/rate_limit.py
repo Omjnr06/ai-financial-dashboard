@@ -17,14 +17,14 @@ RATE_LIMIT_WINDOW_SECONDS = 60
 _hits: dict[str, deque] = defaultdict(deque)
 
 
-def _check(key: str) -> None:
+def _check(key: str, max_requests: int, window_seconds: int) -> None:
     now = time.monotonic()
-    window_start = now - RATE_LIMIT_WINDOW_SECONDS
+    window_start = now - window_seconds
     q = _hits[key]
     while q and q[0] < window_start:
         q.popleft()
-    if len(q) >= RATE_LIMIT_MAX_REQUESTS:
-        retry_after = int(q[0] + RATE_LIMIT_WINDOW_SECONDS - now) + 1
+    if len(q) >= max_requests:
+        retry_after = int(q[0] + window_seconds - now) + 1
         raise HTTPException(
             status_code=429,
             detail="Too many requests. Please slow down.",
@@ -33,8 +33,10 @@ def _check(key: str) -> None:
     q.append(now)
 
 
-def rate_limit(scope: str = "default"):
+def rate_limit(scope: str = "default",
+               max_requests: int = RATE_LIMIT_MAX_REQUESTS, 
+               window_seconds: int = RATE_LIMIT_WINDOW_SECONDS):
     def dependency(user_id: str = Depends(get_current_user)) -> str:
-        _check(f"{user_id}:{scope}")
+        _check(f"{user_id}:{scope}",max_requests, window_seconds)
         return user_id
     return dependency

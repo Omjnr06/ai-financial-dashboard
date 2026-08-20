@@ -7,6 +7,7 @@ import { AlertTriangle } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { pingSession } from "@/lib/session-ping";
 
+// temp override for idle testing
 const IDLE_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_IDLE_TIMEOUT_MS ?? 15 * 60 * 1000);
 const COUNTDOWN_SECONDS = Number(process.env.NEXT_PUBLIC_IDLE_COUNTDOWN_SECONDS ?? 60);
 const ACTIVITY_STORAGE_KEY = "vault_last_activity";

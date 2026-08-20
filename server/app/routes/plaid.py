@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlmodel import Session
 from pydantic import BaseModel
 import logging
+from sqlmodel import select
 
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
@@ -21,6 +22,8 @@ from app.integrations.plaid_webhook_verify import verify_webhook
 from app.services.ingestion import sync_transactions
 from app.core.config import settings
 
+from app.security.rate_limit import rate_limit
+
 router = APIRouter(prefix="/api/plaid", tags=["plaid"])
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,13 @@ class ExchangeResponse(BaseModel):
     success: bool
     institutionName: str
 
+class StatusResponse(BaseModel):
+    status: str
+    accountCount: int
+
+class SandboxLinkResponse(BaseModel):
+    success: bool
+    institutionName: str
 
 @router.post(
     "/link_token",
@@ -43,7 +53,7 @@ class ExchangeResponse(BaseModel):
     summary="Create a Plaid Link token",
     response_description="A short-lived token used to initialize Plaid Link",
 )
-def create_link_token(user_id: str = Depends(get_current_user)) -> LinkTokenResponse:
+def create_link_token(user_id: str = Depends(rate_limit("plaid_link", max_requests=5))) -> LinkTokenResponse:
     """
     Create a Plaid `link_token` for the authenticated user.
 
@@ -57,6 +67,7 @@ def create_link_token(user_id: str = Depends(get_current_user)) -> LinkTokenResp
         products=[Products("transactions")],
         country_codes=[CountryCode("US"), CountryCode("CA")],
         language="en",
+        webhook= "https://kfq622gn-8000.inc1.devtunnels.ms/api/plaid/webhook",
     )
     resp = plaid_client.link_token_create(req)
     return LinkTokenResponse(
@@ -73,7 +84,7 @@ def create_link_token(user_id: str = Depends(get_current_user)) -> LinkTokenResp
 )
 def exchange_public_token(
     body: ExchangeBody,
-    user_id: str = Depends(get_current_user),
+    user_id: str = Depends(rate_limit("plaid_link", max_requests=5)),
     db: Session = Depends(get_session),
 ) -> ExchangeResponse:
     """
@@ -168,9 +179,6 @@ async def plaid_webhook(request: Request):
     return {"acknowledged": True}
 
 
-class SandboxLinkResponse(BaseModel):
-    success: bool
-    institutionName: str
 
 
 @router.post(
@@ -253,3 +261,37 @@ def sandbox_link(
     sync_transactions(db, item_id)
 
     return SandboxLinkResponse(success=True, institutionName=institution_name)
+
+# check if account connected to live bank endpoint
+@router.get(
+    "/status",
+    response_model=StatusResponse,
+    summary="Check bank connection status",
+    response_description="Returns 'ready' if accounts have been created for the user",
+)
+def check_connection_status(
+    user_id: str = Depends(rate_limit("plaid_status", max_requests=60)),
+    db: Session = Depends(get_session),
+) -> StatusResponse:
+    """
+    Poll to see if the user's initial bank connection has succeeded and 
+    accounts are populated.
+    """
+    # 1. Check for an active PlaidItem for this user
+    item_stmt = select(PlaidItem).where(
+        PlaidItem.userId == user_id, 
+        PlaidItem.status == Status.active
+    )
+    item = db.exec(item_stmt).first()
+
+    if not item:
+        return StatusResponse(status="pending", accountCount=0)
+
+    # 2. Check if accounts have been generated for this item
+    acct_stmt = select(Accounts).where(Accounts.plaidItemId == item.id)
+    accounts = db.exec(acct_stmt).all()
+
+    if accounts:
+        return StatusResponse(status="ready", accountCount=len(accounts))
+
+    return StatusResponse(status="pending", accountCount=0)
