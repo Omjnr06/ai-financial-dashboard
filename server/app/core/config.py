@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     PLAID_CLIENT_SANDBOX_SECRET: str
     PLAID_CLIENT_PROD_SECRET: str
     PLAID_ENV: str = "sandbox"
+    PLAID_WEBHOOK_URL: str
     TOKEN_ENCRYPTION_KEY: str
 
 

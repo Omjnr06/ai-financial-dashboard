@@ -67,7 +67,7 @@ def create_link_token(user_id: str = Depends(rate_limit("plaid_link", max_reques
         products=[Products("transactions")],
         country_codes=[CountryCode("US"), CountryCode("CA")],
         language="en",
-        webhook= "https://kfq622gn-8000.inc1.devtunnels.ms/api/plaid/webhook",
+        webhook=settings.PLAID_WEBHOOK_URL,
     )
     resp = plaid_client.link_token_create(req)
     return LinkTokenResponse(
