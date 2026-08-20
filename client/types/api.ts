@@ -100,3 +100,89 @@ export interface IncomeCreate {
   isInternalTransfer?: boolean;
 }
 
+export interface HabitCluster {
+  cluster: number;
+  label: string;
+  weekCount: number;
+  avgProfile: Record<string, number>;
+}
+
+export interface HabitProfile {
+  insufficientData: boolean;
+  k?: number;
+  categories?: string[];
+  clusters?: HabitCluster[];
+  currentClusterLabel?: string | null;
+  categoryMeans?: Record<string, number>;
+}
+
+// for monte carlo visualization
+export interface ForecastBand {
+  week: number;
+  p10Cent: number;
+  p25Cent: number;
+  p50Cent: number;
+  p75Cent: number;
+  p90Cent: number;
+}
+
+export interface ForecastBands {
+  bucketId: string;
+  bucketName: string;
+  targetCent: number;
+  currentCent: number;
+  horizonWeeks: number;
+  medianWeeks: number | null;
+  p90Weeks: number | null;
+  probabilityWithinHorizon: number;
+  bands: ForecastBand[];
+  samplePaths?: number[][];
+}
+
+
+export interface CompletionBin { week: number; count: number; }
+export interface GoalDistribution {
+  alreadyReached: boolean;
+  insufficientHistory: boolean;
+  p10Weeks: number | null;
+  medianWeeks: number | null;
+  p90Weeks: number | null;
+  probabilityWithinHorizon: number | null;
+  horizonWeeks: number;
+  simulations: number;
+  savingsDeltaCent: number;
+  histogram: CompletionBin[];
+  historySample: number[];
+}
+
+export interface SpendWeekly { weekStart: string; spentCents: number; }
+export interface SpendMonthly { month: string; spentCents: number; }
+export interface SpendMerchant { name: string; spentCents: number; }
+export interface SpendCategory { category: string; spentCents: number; merchants: SpendMerchant[]; }
+export interface SpendPoint { dateOf: string; amountToCent: number; merchantName: string | null; isAnomaly: boolean; }
+
+export interface SpendSummary {
+  weekly: SpendWeekly[]; monthly: SpendMonthly[];
+  categories: SpendCategory[]; recentPoints: SpendPoint[]; hasSpend: boolean;
+}
+
+
+export interface AssistantResponse {
+  answer: string;
+  intent: string | null;
+  confidence: number;
+  suggestions: string[] | null;
+}
+
+export interface AssistantSuggestions {
+  suggestions: string[];
+}
+
+export type AssistantResult =
+  | { ok: true; data: AssistantResponse }
+  | {
+      ok: false;
+      kind: "auth" | "rate_limit" | "validation" | "network";
+      message: string;
+      retryAfter?: number;
+    };

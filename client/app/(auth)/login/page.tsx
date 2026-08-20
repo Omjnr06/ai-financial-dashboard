@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useState, FormEvent, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/UI/SignUpButton";
@@ -35,6 +35,19 @@ function validate(form: FormState): FormErrors {
   return errors;
 }
 
+function IdleLogoutNotice() {
+  const searchParams = useSearchParams();
+  const idleLogout = searchParams.get("reason") === "idle";
+
+  if (!idleLogout) return null;
+
+  return (
+    <div className="mb-4 rounded-lg bg-accent/10 border border-border-subtle px-3 py-2 text-sm text-text-muted">
+      You were signed out due to inactivity.
+    </div>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
 
@@ -66,7 +79,6 @@ export default function LoginPage() {
       });
 
       if (error) {
-        // Deliberately generic: never confirm/deny whether the email is registered.
         setServerError("Incorrect email or password.");
         return;
       }
@@ -85,6 +97,10 @@ export default function LoginPage() {
         <h1 className="text-2xl font-semibold text-primary mb-6">
           Welcome back
         </h1>
+
+        <Suspense fallback={null}>
+          {!serverError && <IdleLogoutNotice />}
+        </Suspense>
 
         {serverError && (
           <div
@@ -106,7 +122,6 @@ export default function LoginPage() {
             error={errors.email}
             disabled={isSubmitting}
           />
-
           <Input
             label="Password"
             name="password"
@@ -125,7 +140,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-muted space-y-1">
           <span className="block">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/signup" className="text-accent hover:underline">
               Sign up
             </Link>

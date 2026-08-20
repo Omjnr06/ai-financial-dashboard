@@ -107,6 +107,7 @@ export default function SignUpPage() {
         name: form.name.trim(),
         email: form.email.trim(),
         password: form.password,
+        callbackURL: "/connect-bank",
       });
 
       // Display any server-side errors.

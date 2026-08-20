@@ -42,7 +42,7 @@ export default function VerifyEmailPage() {
           // If their email has been verified...
           if (data.user.emailVerified) {
             // Automatically send them to the dashboard
-            router.push("/dashboard");
+            router.push("/connect-bank");
           }
         }
       } finally {

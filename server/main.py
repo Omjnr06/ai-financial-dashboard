@@ -3,11 +3,18 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 from fastapi import Depends
 import logging
+
 from app.core.dependencies import get_current_user
 from app.routes.plaid import router as plaid_router
 from app.routes.bills import router as bills_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.income import router as income_router
+from app.routes.forecast import router as forecast_router
+from app.routes.transactions import router as transactions_router
+from app.routes.buckets import router as buckets_router
+from app.routes.anomalies import router as anomalies_router
+from app.routes.habits import router as habits_router
+from app.routes.assistant import router as assistant_router
 
 # to run locally
 # uv run uvicorn main:app --reload
@@ -49,3 +56,21 @@ app.include_router(dashboard_router)
 
 # income routes
 app.include_router(income_router)
+
+# monte carlo /forecast routes
+app.include_router(forecast_router)
+
+# transaction route (only get)
+app.include_router(transactions_router)
+
+# buckets routes
+app.include_router(buckets_router)
+
+# anomaly detection route
+app.include_router(anomalies_router)
+
+# k-means cluster detection routes
+app.include_router(habits_router)
+
+# assistant get and post routes
+app.include_router(assistant_router)
