@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
 from sqlmodel import Session
 from pydantic import BaseModel
 import logging
@@ -15,7 +15,7 @@ from plaid.model.sandbox_public_token_create_request_options import SandboxPubli
 
 from app.integrations.plaid_client import plaid_client, encrypt_token
 from app.core.dependencies import get_current_user
-from app.core.database import get_session
+from app.core.database import get_session, engine
 from app.models import PlaidItem, Accounts, Status
 from app.utils.account_types import normalize_account_type
 from app.integrations.plaid_webhook_verify import verify_webhook
@@ -65,6 +65,7 @@ def create_link_token(user_id: str = Depends(rate_limit("plaid_link", max_reques
         user=LinkTokenCreateRequestUser(client_user_id=user_id),
         client_name="The Vault",
         products=[Products("transactions")],
+        transactions={"days_requested": 730},
         country_codes=[CountryCode("US"), CountryCode("CA")],
         language="en",
         webhook=settings.PLAID_WEBHOOK_URL,
@@ -139,27 +140,45 @@ def exchange_public_token(
     return ExchangeResponse(success=True, institutionName=institution_name)
 
 
+# health check that auto returns 200 so plaid can access plaid receipts
+@router.get(
+    "/webhook",
+    summary="health check for webhooks",
+    response_description="Returns 200 so that Plaid knows my webhook is good"
+)
+async def plaid_webhook_verify():
+    return {"status": "ok"}
+
+
+def process_transactions_background(item_id: str):
+    """Helper function to run the database sync outside the main request thread."""
+    with Session(engine) as db:
+        result = sync_transactions(db, item_id)
+        # for dev, to be changed to logger later by me
+        print(f"Sync result: {result}")
+
 
 @router.post(
     "/webhook",
-    summary="Receive Plaid webhooks",
-    response_description="Acknowledges receipt",
+    summary="Receive and acknowledge Plaid webhooks asynchronously",
+    response_description="Immediately acknowledges receipt to prevent timeouts, queueing heavy data syncs in the background",
 )
-async def plaid_webhook(request: Request):
+async def plaid_webhook(request: Request, background_tasks: BackgroundTasks):
     """
     Receive and process webhooks from Plaid.
 
     Every request is verified against Plaid's JWT signature before anything in
     the payload is trusted — unsigned or invalid requests are rejected with 401.
 
-    For `TRANSACTIONS` webhooks, this triggers a cursor-based sync that pulls
-    the item's transaction changes from Plaid and applies them to the database:
-    new transactions are inserted, settled/changed ones are updated in place,
-    and removed ones are deleted. The cursor makes this **idempotent** — repeated
-    webhooks never double-count.
+    For `TRANSACTIONS` webhooks, this queues a background task to trigger a 
+    cursor-based sync that pulls the item's transaction changes from Plaid and 
+    applies them to the database: new transactions are inserted, settled/changed 
+    ones are updated in place, and removed ones are deleted. The cursor makes this 
+    **idempotent**  repeated webhooks never double count.
     """
     raw_body = await request.body()
     verification_header = request.headers.get("plaid-verification", "")
+    
     if not verify_webhook(raw_body, verification_header):
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
@@ -167,17 +186,13 @@ async def plaid_webhook(request: Request):
     webhook_type = payload.get("webhook_type")
     webhook_code = payload.get("webhook_code")
     item_id = payload.get("item_id")
+    
     print(f"Verified webhook: type={webhook_type} code={webhook_code} item={item_id}")
 
     if webhook_type == "TRANSACTIONS":
-        from app.core.database import engine
-        with Session(engine) as db:
-            result = sync_transactions(db, item_id)
-            # for dev, to be changed to logger later by me
-            print(f"Sync result: {result}")
+        background_tasks.add_task(process_transactions_background, item_id)
 
     return {"acknowledged": True}
-
 
 
 
