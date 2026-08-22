@@ -113,6 +113,7 @@ export interface HabitProfile {
   categories?: string[];
   clusters?: HabitCluster[];
   currentClusterLabel?: string | null;
+  categoryMeans?: Record<string, number>;
 }
 
 // for monte carlo visualization
@@ -164,3 +165,24 @@ export interface SpendSummary {
   weekly: SpendWeekly[]; monthly: SpendMonthly[];
   categories: SpendCategory[]; recentPoints: SpendPoint[]; hasSpend: boolean;
 }
+
+
+export interface AssistantResponse {
+  answer: string;
+  intent: string | null;
+  confidence: number;
+  suggestions: string[] | null;
+}
+
+export interface AssistantSuggestions {
+  suggestions: string[];
+}
+
+export type AssistantResult =
+  | { ok: true; data: AssistantResponse }
+  | {
+      ok: false;
+      kind: "auth" | "rate_limit" | "validation" | "network";
+      message: string;
+      retryAfter?: number;
+    };

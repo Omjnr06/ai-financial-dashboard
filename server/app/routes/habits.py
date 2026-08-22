@@ -3,6 +3,7 @@ from sqlmodel import Session
 from app.core.dependencies import get_current_user
 from app.core.database import get_session
 from app.services.habit_clustering import cluster_habits, get_cached_habits
+from app.security.rate_limit import rate_limit
 
 router = APIRouter(prefix="/api/habits", tags=["habits"])
 
@@ -38,7 +39,7 @@ def get_habits(
     response_description="The freshly computed clusters",
 )
 def recompute_habits(
-    user_id: str = Depends(get_current_user),
+    user_id: str = Depends(rate_limit("habits")),
     db: Session = Depends(get_session),
 ) -> dict:
     """Force a fresh K-Means run and update the cache. Use after new data lands."""

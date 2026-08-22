@@ -14,6 +14,7 @@ from app.routes.transactions import router as transactions_router
 from app.routes.buckets import router as buckets_router
 from app.routes.anomalies import router as anomalies_router
 from app.routes.habits import router as habits_router
+from app.routes.assistant import router as assistant_router
 
 # to run locally
 # uv run uvicorn main:app --reload
@@ -70,3 +71,6 @@ app.include_router(anomalies_router)
 
 # k-means cluster detection routes
 app.include_router(habits_router)
+
+# assistant get and post routes
+app.include_router(assistant_router)

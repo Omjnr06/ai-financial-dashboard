@@ -5,6 +5,7 @@ from app.core.dependencies import get_current_user
 from app.core.database import get_session
 from app.models import Bucket
 from app.services.forecasting import  weekly_net_savings, forecast_goal, forecast_goal_distribution
+from app.security.rate_limit import rate_limit
 
 router = APIRouter(prefix="/api/forecast", tags=["forecast"])
 
@@ -47,7 +48,7 @@ class GoalDistributionResponse(BaseModel):
 )
 def forecast_bucket_goal(
     bucket_id: str,
-    user_id: str = Depends(get_current_user),
+    user_id: str = Depends(rate_limit("forecast")),
     db: Session = Depends(get_session),
 ) -> GoalForecastResponse:
     """

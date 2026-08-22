@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
 from sqlmodel import Session
 from pydantic import BaseModel
 import logging
+from sqlmodel import select
 
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
@@ -14,12 +15,14 @@ from plaid.model.sandbox_public_token_create_request_options import SandboxPubli
 
 from app.integrations.plaid_client import plaid_client, encrypt_token
 from app.core.dependencies import get_current_user
-from app.core.database import get_session
+from app.core.database import get_session, engine
 from app.models import PlaidItem, Accounts, Status
 from app.utils.account_types import normalize_account_type
 from app.integrations.plaid_webhook_verify import verify_webhook
 from app.services.ingestion import sync_transactions
 from app.core.config import settings
+
+from app.security.rate_limit import rate_limit
 
 router = APIRouter(prefix="/api/plaid", tags=["plaid"])
 logger = logging.getLogger(__name__)
@@ -36,6 +39,13 @@ class ExchangeResponse(BaseModel):
     success: bool
     institutionName: str
 
+class StatusResponse(BaseModel):
+    status: str
+    accountCount: int
+
+class SandboxLinkResponse(BaseModel):
+    success: bool
+    institutionName: str
 
 @router.post(
     "/link_token",
@@ -43,7 +53,7 @@ class ExchangeResponse(BaseModel):
     summary="Create a Plaid Link token",
     response_description="A short-lived token used to initialize Plaid Link",
 )
-def create_link_token(user_id: str = Depends(get_current_user)) -> LinkTokenResponse:
+def create_link_token(user_id: str = Depends(rate_limit("plaid_link", max_requests=5))) -> LinkTokenResponse:
     """
     Create a Plaid `link_token` for the authenticated user.
 
@@ -55,8 +65,10 @@ def create_link_token(user_id: str = Depends(get_current_user)) -> LinkTokenResp
         user=LinkTokenCreateRequestUser(client_user_id=user_id),
         client_name="The Vault",
         products=[Products("transactions")],
+        transactions={"days_requested": 730},
         country_codes=[CountryCode("US"), CountryCode("CA")],
         language="en",
+        webhook=settings.PLAID_WEBHOOK_URL,
     )
     resp = plaid_client.link_token_create(req)
     return LinkTokenResponse(
@@ -73,7 +85,7 @@ def create_link_token(user_id: str = Depends(get_current_user)) -> LinkTokenResp
 )
 def exchange_public_token(
     body: ExchangeBody,
-    user_id: str = Depends(get_current_user),
+    user_id: str = Depends(rate_limit("plaid_link", max_requests=5)),
     db: Session = Depends(get_session),
 ) -> ExchangeResponse:
     """
@@ -128,27 +140,45 @@ def exchange_public_token(
     return ExchangeResponse(success=True, institutionName=institution_name)
 
 
+# health check that auto returns 200 so plaid can access plaid receipts
+@router.get(
+    "/webhook",
+    summary="health check for webhooks",
+    response_description="Returns 200 so that Plaid knows my webhook is good"
+)
+async def plaid_webhook_verify():
+    return {"status": "ok"}
+
+
+def process_transactions_background(item_id: str):
+    """Helper function to run the database sync outside the main request thread."""
+    with Session(engine) as db:
+        result = sync_transactions(db, item_id)
+        # for dev, to be changed to logger later by me
+        print(f"Sync result: {result}")
+
 
 @router.post(
     "/webhook",
-    summary="Receive Plaid webhooks",
-    response_description="Acknowledges receipt",
+    summary="Receive and acknowledge Plaid webhooks asynchronously",
+    response_description="Immediately acknowledges receipt to prevent timeouts, queueing heavy data syncs in the background",
 )
-async def plaid_webhook(request: Request):
+async def plaid_webhook(request: Request, background_tasks: BackgroundTasks):
     """
     Receive and process webhooks from Plaid.
 
     Every request is verified against Plaid's JWT signature before anything in
     the payload is trusted — unsigned or invalid requests are rejected with 401.
 
-    For `TRANSACTIONS` webhooks, this triggers a cursor-based sync that pulls
-    the item's transaction changes from Plaid and applies them to the database:
-    new transactions are inserted, settled/changed ones are updated in place,
-    and removed ones are deleted. The cursor makes this **idempotent** — repeated
-    webhooks never double-count.
+    For `TRANSACTIONS` webhooks, this queues a background task to trigger a 
+    cursor-based sync that pulls the item's transaction changes from Plaid and 
+    applies them to the database: new transactions are inserted, settled/changed 
+    ones are updated in place, and removed ones are deleted. The cursor makes this 
+    **idempotent**  repeated webhooks never double count.
     """
     raw_body = await request.body()
     verification_header = request.headers.get("plaid-verification", "")
+    
     if not verify_webhook(raw_body, verification_header):
         raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
@@ -156,21 +186,14 @@ async def plaid_webhook(request: Request):
     webhook_type = payload.get("webhook_type")
     webhook_code = payload.get("webhook_code")
     item_id = payload.get("item_id")
+    
     print(f"Verified webhook: type={webhook_type} code={webhook_code} item={item_id}")
 
     if webhook_type == "TRANSACTIONS":
-        from app.core.database import engine
-        with Session(engine) as db:
-            result = sync_transactions(db, item_id)
-            # for dev, to be changed to logger later by me
-            print(f"Sync result: {result}")
+        background_tasks.add_task(process_transactions_background, item_id)
 
     return {"acknowledged": True}
 
-
-class SandboxLinkResponse(BaseModel):
-    success: bool
-    institutionName: str
 
 
 @router.post(
@@ -253,3 +276,37 @@ def sandbox_link(
     sync_transactions(db, item_id)
 
     return SandboxLinkResponse(success=True, institutionName=institution_name)
+
+# check if account connected to live bank endpoint
+@router.get(
+    "/status",
+    response_model=StatusResponse,
+    summary="Check bank connection status",
+    response_description="Returns 'ready' if accounts have been created for the user",
+)
+def check_connection_status(
+    user_id: str = Depends(rate_limit("plaid_status", max_requests=60)),
+    db: Session = Depends(get_session),
+) -> StatusResponse:
+    """
+    Poll to see if the user's initial bank connection has succeeded and 
+    accounts are populated.
+    """
+    # 1. Check for an active PlaidItem for this user
+    item_stmt = select(PlaidItem).where(
+        PlaidItem.userId == user_id, 
+        PlaidItem.status == Status.active
+    )
+    item = db.exec(item_stmt).first()
+
+    if not item:
+        return StatusResponse(status="pending", accountCount=0)
+
+    # 2. Check if accounts have been generated for this item
+    acct_stmt = select(Accounts).where(Accounts.plaidItemId == item.id)
+    accounts = db.exec(acct_stmt).all()
+
+    if accounts:
+        return StatusResponse(status="ready", accountCount=len(accounts))
+
+    return StatusResponse(status="pending", accountCount=0)

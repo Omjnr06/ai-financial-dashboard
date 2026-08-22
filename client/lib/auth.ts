@@ -22,6 +22,7 @@ export const auth = betterAuth({
   // manages auth tables in the db
   database: pool,
 
+  // could put session and expiryAt here but better auth defaults r good for now
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
