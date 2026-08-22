@@ -1,4 +1,3 @@
-
 from fastapi import Request, HTTPException, Depends
 from datetime import datetime, timezone
 from sqlmodel import Session
@@ -9,7 +8,14 @@ from app.core.database import get_session
 async def get_current_user( request: Request, db: Session = Depends(get_session)) -> str:
 
 # read the session cookie Better Auth gives and if its null or empty throw a http exception 401 error saying that your not authenticated
-    cookie = request.cookies.get("better-auth.session_token")
+    cookie = request.cookies.get("__Secure-better-auth.session_token") or request.cookies.get("better-auth.session_token")
+    
+    # Fallback to Authorization header if cookies are blocked by cross-origin rules
+    if not cookie:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            cookie = auth_header.split(" ")[1]
+            
     if not cookie:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
