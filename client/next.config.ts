@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
         // Intercepts any frontend call to /api/external/...
         source: "/api/external/:path*",
         // Proxies it to your Render backend with cookies securely attached
-        destination: "https://vault-api-n6zf.onrender.com/api/:path*",
+        destination: "https://vault-api-n6zf.onrender.com/:path*",
       },
     ];
   },
