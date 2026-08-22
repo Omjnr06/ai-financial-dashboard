@@ -10,12 +10,17 @@ _HOSTS = {
     "development": "https://development.plaid.com",
 }
 
+_SECRETS = {
+    "sandbox": settings.PLAID_CLIENT_SANDBOX_SECRET,
+    "production": settings.PLAID_CLIENT_PROD_SECRET,
+    "development": settings.PLAID_CLIENT_PROD_SECRET,
+}
 
 _configuration = Configuration(
     host=_HOSTS[settings.PLAID_ENV],
     api_key={
         "clientId": settings.PLAID_CLIENT_ID,
-        "secret": settings.PLAID_CLIENT_PROD_SECRET,
+        "secret": _SECRETS[settings.PLAID_ENV],
     },
 )
 
