@@ -1,0 +1,41 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments & Dependencies
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# Local Environment Secrets (CRITICAL for security)
+.env
+.env.*
+!.env.example
+
+# Version Control & IDEs
+.git/
+.gitignore
+.vscode/
+.idea/
+*.swp
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# OS Junk
+.DS_Store
+Thumbs.db
+
+# Logs & Local Storage
+*.log
+*.sqlite3
+*.db
