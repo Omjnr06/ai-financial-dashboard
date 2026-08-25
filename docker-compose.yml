@@ -1,0 +1,11 @@
+services:
+  backend:
+    build:
+      context: ./server
+      target: development #local dev
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./server/.env
+    volumes:
+      - ./server:/app
