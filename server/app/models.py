@@ -52,6 +52,7 @@ class PlaidItem(SQLModel, table=True):
     institutionName: str | None = Field(default = None) # nullable
     status: Status
     cursor: str | None = Field(default=None)
+    lastSyncedAt: datetime | None = Field(default=None)
     createdAt: datetime = Field(default_factory = nowUtc)
 
 # connection to bank (shows credit, chequing, savings etc)
