@@ -1,6 +1,9 @@
 "use client";
 
 import { ReactNode } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation"; 
+import { motion } from "framer-motion";
 import { Home, ArrowLeftRight, PiggyBank, Settings, MessageSquare, LayoutGrid } from "lucide-react";
 import { useThemeStore } from "@/stores/useThemeStore";
 
@@ -11,6 +14,7 @@ interface HorizontalLayoutProps {
 
 export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps) {
   const setLayout = useThemeStore((s) => s.setLayout);
+  const pathname = usePathname(); 
 
   return (
     <div className="min-h-screen bg-surface">
@@ -43,10 +47,30 @@ export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps
 
         <nav className="flex justify-center mb-8">
           <div className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded-full px-3 py-2">
-            <NavItem icon={<Home size={18} />} label="Home" active />
-            <NavItem icon={<ArrowLeftRight size={18} />} label="Transactions" />
-            <NavItem icon={<PiggyBank size={18} />} label="Savings" />
-            <NavItem icon={<Settings size={18} />} label="Settings" />
+            <NavItem 
+              icon={<Home size={18} />} 
+              label="Home" 
+              href="/dashboard" 
+              active={pathname === "/dashboard" || pathname === "/"} 
+            />
+            <NavItem 
+              icon={<ArrowLeftRight size={18} />} 
+              label="Transactions" 
+              href="/transactions" 
+              active={pathname === "/transactions"} 
+            />
+            <NavItem 
+              icon={<PiggyBank size={18} />} 
+              label="Savings" 
+              href="/savings" 
+              active={pathname === "/savings"} 
+            />
+            <NavItem 
+              icon={<Settings size={18} />} 
+              label="Settings" 
+              href="/settings" 
+              active={pathname === "/settings"} 
+            />
           </div>
         </nav>
 
@@ -56,15 +80,33 @@ export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps
   );
 }
 
-function NavItem({ icon, label, active }: { icon: ReactNode; label: string; active?: boolean }) {
+function NavItem({ 
+  icon, 
+  label, 
+  href, 
+  active 
+}: { 
+  icon: ReactNode; 
+  label: string; 
+  href: string; 
+  active?: boolean; 
+}) {
   return (
-    <button
-      className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm transition ${
-        active ? "bg-accent text-surface" : "text-text-muted hover:text-text-primary"
+    <Link
+      href={href}
+      className={`relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-colors duration-200 z-10 ${
+        active ? "text-surface" : "text-text-muted hover:text-text-primary"
       }`}
     >
+      {active && (
+        <motion.div
+          layoutId="mainNavPill"
+          className="absolute inset-0 bg-accent rounded-full -z-10 shadow-[0_0_12px_rgba(0,210,255,0.4)]"
+          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+        />
+      )}
       {icon}
-      {label}
-    </button>
+      <span>{label}</span>
+    </Link>
   );
 }
