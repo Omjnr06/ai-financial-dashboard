@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
-from sqlmodel import Session
+from sqlmodel import Session, select
 from pydantic import BaseModel
 import logging
-from sqlmodel import select
+import resend
+from sqlalchemy import text, delete
 
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
@@ -12,6 +13,7 @@ from plaid.model.products import Products
 from plaid.model.country_code import CountryCode
 from plaid.model.sandbox_public_token_create_request import SandboxPublicTokenCreateRequest
 from plaid.model.sandbox_public_token_create_request_options import SandboxPublicTokenCreateRequestOptions
+from plaid.model.sandbox_item_reset_login_request import SandboxItemResetLoginRequest
 
 from app.integrations.plaid_client import plaid_client, encrypt_token
 from app.core.dependencies import get_current_user
@@ -21,6 +23,8 @@ from app.utils.account_types import normalize_account_type
 from app.integrations.plaid_webhook_verify import verify_webhook
 from app.services.ingestion import sync_transactions
 from app.core.config import settings
+from app.services.anomaly_detection import detect_anomalies
+from app.services.habit_clustering import cluster_habits
 
 from app.security.rate_limit import rate_limit
 
@@ -46,6 +50,15 @@ class StatusResponse(BaseModel):
 class SandboxLinkResponse(BaseModel):
     success: bool
     institutionName: str
+
+class UpdateTokenRequest(BaseModel):
+    item_id: str
+
+class RemoveItemRequest(BaseModel):
+    item_id: str
+
+class SandboxResetRequest(BaseModel):
+    item_id: str
 
 @router.post(
     "/link_token",
@@ -75,6 +88,128 @@ def create_link_token(user_id: str = Depends(rate_limit("plaid_link", max_reques
         linkToken=resp["link_token"],
         expiration=resp["expiration"].isoformat(),
     )
+
+# for update mode when bank cred time out
+@router.post(
+    "/link_token/update",
+    response_model=LinkTokenResponse,
+    summary="Create a Plaid Link token in update mode",
+    response_description="A short lived token used to open Plaid Link for credential or MFA updates",
+)
+def create_update_link_token(
+    body: UpdateTokenRequest,
+    user_id: str = Depends(rate_limit("plaid_link", max_requests=5)),
+    db: Session = Depends(get_session)
+) -> LinkTokenResponse:
+    """
+    Generate a Plaid `link_token` initialized in **Update Mode** for an existing connection.
+
+    This endpoint retrieves and decrypts the stored `access_token` for the specified `item_id` 
+    and passes it directly to Plaid's `link_token_create`. 
+
+    When opened in the frontend, Plaid Link bypasses institution selection and prompts 
+    the user directly for re authentication, MFA resolution, or updated credentials. 
+    Completing update mode restores connection health without producing a duplicate item 
+    or altering existing account mappings.
+    """
+    item = db.exec(select(PlaidItem).where(PlaidItem.itemId == body.item_id, PlaidItem.userId == user_id)).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    from app.integrations.plaid_client import decrypt_token
+    decrypted_token = decrypt_token(item.accessTokenEncrypted)
+
+    req = LinkTokenCreateRequest(
+        user=LinkTokenCreateRequestUser(client_user_id=user_id),
+        client_name="The Vault",
+        access_token=decrypted_token,
+        country_codes=[CountryCode("US"), CountryCode("CA")],
+        language="en",
+        webhook=settings.PLAID_WEBHOOK_URL,
+    )
+    resp = plaid_client.link_token_create(req)
+    return LinkTokenResponse(
+        linkToken=resp["link_token"],
+        expiration=resp["expiration"].isoformat(),
+    )
+
+
+# for deleting a bank account connection or can be used when user deleting account
+@router.post(
+    "/item/remove",
+    summary="Disconnect a bank connection and purge associated data",
+    response_description="Revokes Plaid consent, cascade deletes local records, and triggers ML model refresh",
+)
+def remove_plaid_item(
+    body: RemoveItemRequest,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(rate_limit("plaid_remove", max_requests=3)),
+    db: Session = Depends(get_session)
+):
+    """
+    Permanently disconnect a bank institution and purge all local relational data.
+
+    It Follows these steps:
+    -  **Consent Revocation**: Decrypts the stored `access_token` and calls Plaid's 
+       `/item/remove` endpoint to invalidate access and stop future webhooks.
+    -  **Local Cascade Deletion**: Deletes records in relational order to respect foreign key 
+       constraints: `Transactions` -> `Accounts` -> `PlaidItem`.
+    - **Background Re computation**: Schedules background tasks to re run Isolation Forest 
+       anomaly detection (`detect_anomalies`) and K Means habit clustering (`cluster_habits`) 
+       so that analytical models immediately reflect the remaining active dataset.
+    """
+    item = db.exec(select(PlaidItem).where(PlaidItem.itemId == body.item_id, PlaidItem.userId == user_id)).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    from app.integrations.plaid_client import decrypt_token
+    from plaid.model.item_remove_request import ItemRemoveRequest
+
+    decrypted_token = decrypt_token(item.accessTokenEncrypted)
+    
+    try:
+        plaid_client.item_remove(ItemRemoveRequest(access_token=decrypted_token))
+    except Exception as e:
+        logger.error(f"Failed to remove item from Plaid: {e}")
+
+    accounts = db.exec(select(Accounts).where(Accounts.plaidItemId == item.id)).all()
+    account_ids = [acct.id for acct in accounts]
+    
+    if account_ids:
+        db.exec(delete(Transactions).where(Transactions.accountId.in_(account_ids)))
+        db.exec(delete(Accounts).where(Accounts.plaidItemId == item.id))
+        
+    db.delete(item)
+    db.commit()
+
+    background_tasks.add_task(detect_anomalies, user_id)
+    background_tasks.add_task(cluster_habits, user_id)
+
+    return {"success": True}
+
+@router.post(
+    "/sandbox/reset_login",
+    summary="Force an item into ITEM_LOGIN_REQUIRED (Sandbox only)",
+    response_description="Forces a sandbox item into an error state to trigger the ITEM webhook",
+)
+def sandbox_reset_item_login(
+    body: SandboxResetRequest,
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_session)
+):
+    if settings.PLAID_ENV != "sandbox":
+        raise HTTPException(status_code=403, detail="Only available in sandbox")
+
+    item = db.exec(select(PlaidItem).where(PlaidItem.itemId == body.item_id, PlaidItem.userId == user_id)).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    from app.integrations.plaid_client import decrypt_token
+    decrypted = decrypt_token(item.accessTokenEncrypted)
+    
+    plaid_client.sandbox_item_reset_login(SandboxItemResetLoginRequest(access_token=decrypted))
+    
+    return {"status": "Item reset successfully. Plaid should fire an ITEM webhook momentarily."}
 
 
 @router.post(
@@ -163,19 +298,25 @@ def process_transactions_background(item_id: str):
     summary="Receive and acknowledge Plaid webhooks asynchronously",
     response_description="Immediately acknowledges receipt to prevent timeouts, queueing heavy data syncs in the background",
 )
-async def plaid_webhook(request: Request, background_tasks: BackgroundTasks):
+async def plaid_webhook(request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_session)):
     """
-    Receive and process webhooks from Plaid.
+Receive, verify, and process asynchronous webhooks from Plaid.
 
-    Every request is verified against Plaid's JWT signature before anything in
-    the payload is trusted — unsigned or invalid requests are rejected with 401.
+    Every request is verified against Plaid's JWT signature via headers before 
+    anything in the payload is trusted so unsigned or invalid requests are 
+    rejected immediately with a 401 Unauthorized.
 
-    For `TRANSACTIONS` webhooks, this queues a background task to trigger a 
-    cursor-based sync that pulls the item's transaction changes from Plaid and 
-    applies them to the database: new transactions are inserted, settled/changed 
-    ones are updated in place, and removed ones are deleted. The cursor makes this 
-    **idempotent**  repeated webhooks never double count.
-    """
+    Supported Webhook Types:
+    - **TRANSACTIONS**: Queues a background cursor based transaction sync. 
+      New transactions are inserted, changed ones are updated, and removed 
+      ones are deleted. The cursor makes this sync idempotent.
+    - **ITEM**: Handles connection health state changes.
+      - On `ITEM_LOGIN_REQUIRED` errors, flips `PlaidItem.status` to `login_required`. 
+        If transitioning from `active`, retrieves the user's details from Better Auth 
+        and dispatches a notification email via Resend. Redundant webhooks while already 
+        in `login_required` state are ignored to prevent email spam.
+      - On re authentication or acknowledgment webhooks, restores `PlaidItem.status` 
+        back to `active`.   """
     raw_body = await request.body()
     verification_header = request.headers.get("plaid-verification", "")
     
@@ -191,9 +332,34 @@ async def plaid_webhook(request: Request, background_tasks: BackgroundTasks):
 
     if webhook_type == "TRANSACTIONS":
         background_tasks.add_task(process_transactions_background, item_id)
+    elif webhook_type == "ITEM":
+        item = db.exec(select(PlaidItem).where(PlaidItem.itemId == item_id)).first()
+        if item:
+            error_obj = payload.get("error")
+            if webhook_code == "ERROR" and error_obj and error_obj.get("error_code") == "ITEM_LOGIN_REQUIRED":
+                if item.status != Status.loginReq:
+                    item.status = Status.loginReq
+                    db.commit()
+                    
+                    user_record = db.exec(
+                        text('SELECT email, name FROM "user" WHERE id = :uid'), 
+                        params={"uid": item.userId}
+                    ).first()
+                    
+                    if user_record:
+                        resend.api_key = settings.RESEND_API_KEY
+                        resend.Emails.send({
+                            "from": "The Vault <onboarding@resend.dev>",
+                            "to": user_record.email,
+                            "subject": "Action Required: Reconnect your bank account",
+                            "html": f"<p>Hi {user_record.name},</p><p>Your connection to {item.institutionName} requires attention. Please log into The Vault to reconnect it.</p>"
+                        })
+            elif webhook_code == "WEBHOOK_UPDATE_ACKNOWLEDGED" or not error_obj:
+                if item.status != Status.active:
+                    item.status = Status.active
+                    db.commit()
 
     return {"acknowledged": True}
-
 
 
 @router.post(
