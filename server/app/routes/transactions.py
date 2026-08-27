@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, and_
 from sqlmodel import Session, select
@@ -37,6 +39,7 @@ class TransactionsPage(BaseModel):
     limit: int
     offset: int
     hasMore: bool
+
 
 class SpendWeekly(CamelModel):
     week_start: date
@@ -83,15 +86,47 @@ class SpendSummaryResponse(CamelModel):
 )
 def list_transactions(
     account_id: str | None = Query(default=None, alias="accountId"),
+    search: str | None = Query(default=None),
+    type: Literal["income", "expense"] | None = Query(default=None),
+    category: str | None = Query(default=None),
+    start_date: date | None = Query(default=None, alias="startDate"),
+    end_date: date | None = Query(default=None, alias="endDate"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     user_id: str = Depends(get_current_user),
     db: Session = Depends(get_session),
 ) -> TransactionsPage:
-    
+    """
+    Return a paginated page of the authenticated user's transactions,
+    newest first.
+
+    All filters below are optional and combine — provide any mix of them
+    to narrow the results, or omit all of them to get the unfiltered,
+    newest-first page (the original behavior).
+
+    - **accountId**: restrict to a single account.
+    - **search**: case-insensitive substring match on merchant name.
+    - **type**: "income" (negative amounts) or "expense" (positive amounts),
+      per the Plaid sign convention.
+    - **category**: exact match on transaction category.
+    - **startDate** / **endDate**: restrict to transactions dated within
+      this range, inclusive on both ends.
+    """
     filters = [Transactions.userId == user_id]
     if account_id is not None:
         filters.append(Transactions.accountId == account_id)
+    if search is not None:
+        filters.append(Transactions.merchantName.ilike(f"%{search}%"))
+    if type == "income":
+        filters.append(Transactions.amountToCent < 0)
+    elif type == "expense":
+        filters.append(Transactions.amountToCent > 0)
+    if category is not None:
+        filters.append(Transactions.category == category)
+    if start_date is not None:
+        filters.append(Transactions.dateOf >= start_date)
+    if end_date is not None:
+        filters.append(Transactions.dateOf <= end_date)
 
     total = db.exec(
         select(func.count(Transactions.id)).where(and_(*filters))
