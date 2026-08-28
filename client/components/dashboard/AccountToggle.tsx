@@ -2,14 +2,29 @@
 
 import { Account } from "@/types/api";
 import { useDashboardStore } from "@/stores/useDashboardStore";
+import { useQuery } from "@tanstack/react-query";
+import { apiGet } from "@/lib/api";
 
-interface AccountToggleProps {
-  accounts: Account[];
-}
-
-export function AccountToggle({ accounts }: AccountToggleProps) {
+export function AccountToggle() {
   const selectedAccountId = useDashboardStore((s) => s.selectedAccountId);
   const setSelectedAccount = useDashboardStore((s) => s.setSelectedAccount);
+
+  const { data: accounts = [], isLoading } = useQuery({
+    queryKey: ["accounts"],
+    queryFn: async () => {
+      return await apiGet<Account[]>("/api/dashboard/accounts", []);
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-6 no-scrollbar">
+        <div className="h-9 w-24 bg-surface-raised rounded-full animate-pulse border border-border-subtle" />
+        <div className="h-9 w-32 bg-surface-raised rounded-full animate-pulse border border-border-subtle" />
+        <div className="h-9 w-28 bg-surface-raised rounded-full animate-pulse border border-border-subtle" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 mb-6 no-scrollbar">

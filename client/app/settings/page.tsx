@@ -58,7 +58,7 @@ export default function SettingsPage() {
                 damping: 25,
                 mass: 0.8,
               }}
-              className="rounded-3xl bg-surface-raised p-6 md:p-8 border border-border-subtle shadow-xl backdrop-blur-lg min-h-[400px]"
+              className="rounded-3xl bg-surface-raised p-6 md:p-8 border border-border-subtle shadow-xl backdrop-blur-lg min-h-100"
             >
               {activeTab === "profile" && <div>Profile Settings</div>}
               {activeTab === "banks" && <div>Bank Connections Settings</div>}

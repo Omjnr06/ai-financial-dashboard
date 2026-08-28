@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send, Sparkles } from "lucide-react";
 import { askAssistant, getAssistantSuggestions } from "@/lib/assistant";
+import { useQuery } from "@tanstack/react-query";
 
 interface SlideOverChatProps {
   isOpen: boolean;
@@ -30,23 +31,21 @@ export function SlideOverChat({ isOpen, onClose, initialQuery = "" }: SlideOverC
 
   const bodyRef = useRef<HTMLDivElement>(null);
 
+  const { data: suggestions } = useQuery({
+    queryKey: ["assistantSuggestions"],
+    queryFn: async () => await getAssistantSuggestions(),
+    staleTime: Infinity,
+  });
+
+  useEffect(() => {
+    if (suggestions && suggestions.length > 0 && messages.length === 1) {
+      setMessages([{ ...GREETING, suggestions }]);
+    }
+  }, [suggestions]);
+
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isLoading]);
-
-  useEffect(() => {
-    let active = true;
-    getAssistantSuggestions().then((chips) => {
-      if (!active || chips.length === 0) return;
-      setMessages((prev) => {
-        if (prev.length !== 1) return prev;
-        return [{ ...prev[0], suggestions: chips }];
-      });
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const send = async (raw: string) => {
     const question = raw.trim();

@@ -5,34 +5,48 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
 import { formatCents } from "@/lib/format";
 import { SafeToSpend, Bill, NetWorth, Account } from "@/types/api";
+import { useQuery } from "@tanstack/react-query";
+import { apiGet } from "@/lib/api";
+import { mockSummary, mockAccountSafeToSpend } from "@/mocks";
 
 interface HeroTileProps {
-  data: SafeToSpend | null;
   bills: Bill[];
-  isLoading: boolean;
-  error: boolean;
+  isCoreLoading?: boolean;
   netWorth?: NetWorth | null;
   selectedAccount?: Account | null;
-  timeframe: "day" | "week" | "month";
-  onTimeframeChange: (tf: "day" | "week" | "month") => void;
 }
 
 export function SafeToSpendHeroTile({
-  data,
   bills,
-  isLoading,
-  error,
+  isCoreLoading,
   netWorth,
   selectedAccount,
-  timeframe,
-  onTimeframeChange,
 }: HeroTileProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [timeframe, setTimeframe] = useState<"day" | "week" | "month">("week");
 
   const isSpendingView =
     selectedAccount === null ||
     selectedAccount === undefined ||
     selectedAccount.accountType === "spending";
+
+  const { data, isLoading: isQueryLoading, isError: error } = useQuery({
+    queryKey: ["safeToSpend", selectedAccount?.id ?? "aggregate", timeframe],
+    queryFn: async () => {
+      const endpoint = selectedAccount?.id
+        ? `/api/dashboard/safe-to-spend?accountId=${selectedAccount.id}&timeframe=${timeframe}`
+        : `/api/dashboard/safe-to-spend?timeframe=${timeframe}`;
+      
+      const fallback = selectedAccount?.id 
+        ? mockAccountSafeToSpend 
+        : mockSummary.aggregateSafeToSpend;
+
+      return await apiGet<SafeToSpend>(endpoint, fallback);
+    },
+    enabled: isSpendingView,
+  });
+
+  const isLoading = isQueryLoading || isCoreLoading;
 
   if (isLoading) {
     return (
@@ -87,7 +101,7 @@ export function SafeToSpendHeroTile({
           {(["day", "week", "month"] as const).map((tf) => (
             <button
               key={tf}
-              onClick={() => onTimeframeChange(tf)}
+              onClick={() => setTimeframe(tf)}
               className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-all ${
                 timeframe === tf
                   ? "bg-accent text-white shadow-sm"
