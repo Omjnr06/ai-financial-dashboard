@@ -8,6 +8,7 @@ import { useThemeStore } from "@/stores/useThemeStore";
 import { THEMES, Theme } from "@/lib/themes";
 import { apiGet, apiPatch } from "@/lib/api";
 import { SettingsButton } from "@/components/settings/UI/SettingsButton";
+import { themeTransition } from "@/lib/themeTransition";
 
 const THEME_LABELS: Record<string, string> = {
   midnight: "Midnight",
@@ -166,7 +167,7 @@ export function AppearanceTab() {
           {Object.entries(THEMES).map(([id, theme]) => {
             const selected = id === themeId;
             return (
-              <button key={id} onClick={() => setTheme(id)} className="relative text-left rounded-2xl p-1.5 focus:outline-none">
+              <button key={id} onClick={(e) => themeTransition(e, () => setTheme(id))} className="relative text-left rounded-2xl p-1.5 focus:outline-none">
                 {selected && (
                   <motion.div
                     layoutId="theme-selection"
