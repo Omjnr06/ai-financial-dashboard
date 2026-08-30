@@ -11,6 +11,8 @@ import { VerticalLayout } from "@/components/dashboard/layouts/VerticalLayout";
 import { SlideOverChat } from "@/components/dashboard/SlideOverChat";
 
 import { SettingsTabsNav, SettingsTab } from "@/components/settings/SettingsTabNav";
+import { ProfileTab } from "@/components/settings/tabs/ProfileTab";
+import { BankConnectionsTab } from "@/components/settings/tabs/BankConnectionsTab";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -60,8 +62,8 @@ export default function SettingsPage() {
               }}
               className="rounded-3xl bg-surface-raised p-6 md:p-8 border border-border-subtle shadow-xl backdrop-blur-lg min-h-100"
             >
-              {activeTab === "profile" && <div>Profile Settings</div>}
-              {activeTab === "banks" && <div>Bank Connections Settings</div>}
+              {activeTab === "profile" && <ProfileTab />}
+              {activeTab === "banks" && <BankConnectionsTab />}
               {activeTab === "appearance" && <div>Appearance Settings</div>}
               {activeTab === "income" && <div>Income Sources Settings</div>}
               {activeTab === "security" && <div>Security Settings</div>}

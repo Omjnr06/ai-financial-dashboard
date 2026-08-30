@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field
+from sqlalchemy import Column, Enum as SAEnum
 from datetime import datetime, date, timezone
 from enum import Enum
 import uuid
@@ -42,7 +43,7 @@ class Profiles(SQLModel, table = True):
     themeId: str = Field(default = "midnight")
     createdAt: datetime = Field(default_factory = nowUtc)
 
-# each transaction or "item" in plaid
+# each bank connection in plaid
 class PlaidItem(SQLModel, table=True):
     __tablename__ = "plaiditem"
     id: str = Field(default_factory = uid,primary_key = True)
@@ -50,12 +51,12 @@ class PlaidItem(SQLModel, table=True):
     accessTokenEncrypted: str
     itemId: str = Field(index = True,unique = True)
     institutionName: str | None = Field(default = None) # nullable
-    status: Status
+    status: Status = Field(sa_column=Column(SAEnum(Status, values_callable=lambda e: [m.value for m in e]))) # neon mistakenly reading labels instead of values, updated so value passed not label
     cursor: str | None = Field(default=None)
     lastSyncedAt: datetime | None = Field(default=None)
     createdAt: datetime = Field(default_factory = nowUtc)
 
-# connection to bank (shows credit, chequing, savings etc)
+#  Connection to bank wrapper for our app (shows credit, chequing, savings etc)
 class Accounts(SQLModel, table = True):
      __tablename__ = "accounts"
      id: str = Field(default_factory = uid,primary_key = True)

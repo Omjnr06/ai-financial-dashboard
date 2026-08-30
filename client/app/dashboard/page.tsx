@@ -20,6 +20,7 @@ import { HabitAnalysisTile } from "@/components/dashboard/tiles/HabitAnalysisTil
 import { SpendingGraphsTile } from "@/components/dashboard/tiles/SpendingGraphsTile";
 import { BillsTile } from "@/components/dashboard/tiles/BillsTile";
 import { AccountToggle } from "@/components/dashboard/AccountToggle";
+import { ReconnectBanner } from "@/components/dashboard/ReconnectBanner";
 
 import { SlideOverChat } from "@/components/dashboard/SlideOverChat";
 
@@ -92,6 +93,7 @@ export default function DashboardPage() {
   return (
     <LayoutWrapper onOpenChat={() => handleOpenChatWithQuery()}>
       <AccountToggle />
+      <ReconnectBanner />
       
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1 min-w-0 space-y-6">

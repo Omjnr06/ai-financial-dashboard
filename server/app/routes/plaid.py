@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
-from sqlmodel import Session, select
+from sqlmodel import Session, select,func
 from pydantic import BaseModel
 import logging
 import resend
@@ -59,6 +59,17 @@ class RemoveItemRequest(BaseModel):
 
 class SandboxResetRequest(BaseModel):
     item_id: str
+
+class PlaidItemResponse(BaseModel):
+    id: str
+    institutionName: str
+    status: str
+    lastSyncedAt: str | None
+    accountsCount: int
+
+class SyncRequest(BaseModel):
+    item_id: str | None = None
+
 
 @router.post(
     "/link_token",
@@ -133,6 +144,100 @@ def create_update_link_token(
         expiration=resp["expiration"].isoformat(),
     )
 
+
+# list all the users connected bank institutions
+@router.get(
+    "/items",
+    response_model=list[PlaidItemResponse],
+    summary="List the user's connected bank institutions",
+    response_description="One entry per linked institution, with connection status and account count",
+)
+def list_plaid_items(
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_session),
+) -> list[PlaidItemResponse]:
+    """
+    List every bank institution the authenticated user has connected.
+    a single institution may contain several accounts
+    (e.g. chequing, savings, credit), reported here as `accountsCount`.
+
+    The `status` field reflects the health of the connection:
+    - `active` — the connection is healthy and syncing normally.
+    - `login_required` — the bank has invalidated the connection and the user
+      must re-authenticate via Plaid Link update mode before syncing resumes.
+    - `error` — the connection is in an unrecoverable error state.
+    """
+    items = db.exec(
+        select(PlaidItem).where(PlaidItem.userId == user_id)
+    ).all()
+
+    result: list[PlaidItemResponse] = []
+    for item in items:
+        count = db.exec(
+            select(func.count(Accounts.id)).where(Accounts.plaidItemId == item.id)
+        ).one()
+        result.append(
+            PlaidItemResponse(
+                id=item.id,
+                institutionName=item.institutionName or "Unknown Institution",
+                status=item.status.value if hasattr(item.status, "value") else item.status,
+                lastSyncedAt=item.lastSyncedAt.isoformat() if item.lastSyncedAt else None,
+                accountsCount=count,
+            )
+        )
+    return result
+
+
+# for instant user based resync of any connection
+@router.post(
+    "/sync",
+    summary="Sync transactions for one or all of the user's connected banks",
+    response_description="Per item counts of added, modified, and removed transactions",
+)
+def sync_plaid_items(
+    body: SyncRequest,
+    user_id: str = Depends(rate_limit("plaid_sync", max_requests=10)),
+    db: Session = Depends(get_session),
+):
+    """
+    Trigger a transaction sync outside the normal webhook cadence.
+
+    If `item_id` is provided, only that single institution is synced. If it is
+    omitted, every institution the user has connected is synced in turn. Each
+    item is synced via the same cursor based, idempotent `sync_transactions`
+    routine used by the Plaid webhook, so repeated calls never double count.
+
+    Returns a per item breakdown of how many transactions were added, modified,
+    and removed. Individual item failures are captured in the response rather
+    than aborting the whole batch, so one broken connection does not block the
+    others.
+    """
+    query = select(PlaidItem).where(PlaidItem.userId == user_id)
+    if body.item_id:
+        query = query.where(PlaidItem.itemId == body.item_id)
+
+    items = db.exec(query).all()
+    if not items:
+        raise HTTPException(status_code=404, detail="No matching connections found")
+
+    results = []
+    for item in items:
+        try:
+            result = sync_transactions(db, item.itemId)
+            results.append({
+                "itemId": item.itemId,
+                "institutionName": item.institutionName,
+                **result,
+            })
+        except Exception as e:
+            logger.error(f"Manual sync failed for item {item.itemId}: {e}")
+            results.append({
+                "itemId": item.itemId,
+                "institutionName": item.institutionName,
+                "error": "sync failed",
+            })
+
+    return {"synced": results}
 
 # for deleting a bank account connection or can be used when user deleting account
 @router.post(

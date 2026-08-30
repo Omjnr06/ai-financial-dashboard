@@ -1,6 +1,7 @@
 // enums
 export type IncomeFrequency = "weekly" | "biweekly" | "monthly";
 export type AccountType = "spending" | "credit" | "savings" | "investment" | "loan";
+export type Status = "active" | "login_required" | "error" ;
 
 // API returns camelCase; backend uses Pydantic alias_generator to convert
 export interface LinkTokenResponse {
@@ -60,6 +61,7 @@ export interface Account {
   currentBalanceToCent: number;
   availableBalanceToCent: number | null;
   limitToCent: number | null;
+  status: Status;
 }
 
 
@@ -186,3 +188,11 @@ export type AssistantResult =
       message: string;
       retryAfter?: number;
     };
+
+export interface PlaidItemData {
+  id: string;
+  institutionName: string;
+  status: "active" | "login_required" | "error";
+  lastSyncedAt?: string;
+  accountsCount?: number;
+}
