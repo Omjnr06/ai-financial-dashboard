@@ -2,10 +2,9 @@
 
 import { ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation"; 
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Home, ArrowLeftRight, PiggyBank, Settings, MessageSquare, LayoutGrid } from "lucide-react";
-import { useThemeStore } from "@/stores/useThemeStore";
+import { Home, ArrowLeftRight, PiggyBank, Settings, MessageSquare } from "lucide-react";
 
 interface HorizontalLayoutProps {
   children: ReactNode;
@@ -13,8 +12,7 @@ interface HorizontalLayoutProps {
 }
 
 export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps) {
-  const setLayout = useThemeStore((s) => s.setLayout);
-  const pathname = usePathname(); 
+  const pathname = usePathname();
 
   return (
     <div className="min-h-screen bg-surface">
@@ -29,13 +27,6 @@ export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setLayout("vertical")}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-raised border border-border-subtle text-text-muted hover:text-text-primary text-sm transition"
-            >
-              <LayoutGrid size={16} />
-              Vertical Rail
-            </button>
-            <button
               onClick={onOpenChat}
               aria-label="Open chat"
               className="w-10 h-10 rounded-full bg-surface-raised border border-border-subtle flex items-center justify-center text-accent hover:bg-accent/10 transition"
@@ -47,29 +38,29 @@ export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps
 
         <nav className="flex justify-center mb-8">
           <div className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded-full px-3 py-2">
-            <NavItem 
-              icon={<Home size={18} />} 
-              label="Home" 
-              href="/dashboard" 
-              active={pathname === "/dashboard" || pathname === "/"} 
+            <NavItem
+              icon={<Home size={18} />}
+              label="Home"
+              href="/dashboard"
+              active={pathname === "/dashboard" || pathname === "/"}
             />
-            <NavItem 
-              icon={<ArrowLeftRight size={18} />} 
-              label="Transactions" 
-              href="/transactions" 
-              active={pathname === "/transactions"} 
+            <NavItem
+              icon={<ArrowLeftRight size={18} />}
+              label="Transactions"
+              href="/transactions"
+              active={pathname === "/transactions"}
             />
-            <NavItem 
-              icon={<PiggyBank size={18} />} 
-              label="Savings" 
-              href="/savings" 
-              active={pathname === "/savings"} 
+            <NavItem
+              icon={<PiggyBank size={18} />}
+              label="Savings"
+              href="/savings"
+              active={pathname === "/savings"}
             />
-            <NavItem 
-              icon={<Settings size={18} />} 
-              label="Settings" 
-              href="/settings" 
-              active={pathname === "/settings"} 
+            <NavItem
+              icon={<Settings size={18} />}
+              label="Settings"
+              href="/settings"
+              active={pathname === "/settings"}
             />
           </div>
         </nav>
@@ -80,16 +71,16 @@ export function HorizontalLayout({ children, onOpenChat }: HorizontalLayoutProps
   );
 }
 
-function NavItem({ 
-  icon, 
-  label, 
-  href, 
-  active 
-}: { 
-  icon: ReactNode; 
-  label: string; 
-  href: string; 
-  active?: boolean; 
+function NavItem({
+  icon,
+  label,
+  href,
+  active,
+}: {
+  icon: ReactNode;
+  label: string;
+  href: string;
+  active?: boolean;
 }) {
   return (
     <Link
