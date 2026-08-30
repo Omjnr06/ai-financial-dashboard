@@ -129,8 +129,12 @@ class IncomeSource(SQLModel, table = True):
     name: str
     amountToCent: int
     frequency: IncomeFrequency
-    anchorDate: date # a known payday
+    anchorDate: date |  None = Field(default=None) # a known payday, is now going to be nullable
     active: bool = Field(default=True)
+    streamId: str | None = Field(default=None, index=True)
+    isAuto: bool = Field(default=False)
+    reviewed: bool = Field(default=True)
+    dismissed: bool = Field(default=False)
     createdAt: datetime = Field(default_factory = nowUtc)
 
 # cached table of a users habits. Powered by k-means

@@ -62,3 +62,69 @@ body {
 *::-webkit-scrollbar-thumb:hover {
   background-color: var(--accent);
 }
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.vault-daypicker .rdp-root {
+  --rdp-accent-color: var(--accent);
+  --rdp-accent-background-color: var(--accent);
+  --rdp-today-color: var(--accent);
+  margin: 0;
+}
+ 
+.vault-daypicker .rdp-month_caption,
+.vault-daypicker .rdp-caption_label {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+ 
+.vault-daypicker .rdp-weekday {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+ 
+.vault-daypicker .rdp-day_button {
+  color: var(--text-primary);
+  border-radius: 0.6rem;
+  font-size: 0.8rem;
+}
+ 
+.vault-daypicker .rdp-day_button:hover {
+  background-color: var(--surface);
+}
+ 
+.vault-daypicker .rdp-outside .rdp-day_button {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+ 
+.vault-daypicker .rdp-selected .rdp-day_button {
+  background-color: var(--accent);
+  color: var(--surface);
+  font-weight: 600;
+}
+ 
+.vault-daypicker .rdp-today .rdp-day_button:not(.rdp-selected *) {
+  color: var(--accent);
+  font-weight: 700;
+}
+ 
+.vault-daypicker .rdp-chevron {
+  fill: var(--text-muted);
+}
+ 
+.vault-daypicker .rdp-button_previous:hover .rdp-chevron,
+.vault-daypicker .rdp-button_next:hover .rdp-chevron {
+  fill: var(--accent);
+}

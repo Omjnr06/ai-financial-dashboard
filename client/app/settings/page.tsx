@@ -14,6 +14,7 @@ import { SettingsTabsNav, SettingsTab } from "@/components/settings/SettingsTabN
 import { ProfileTab } from "@/components/settings/tabs/ProfileTab";
 import { BankConnectionsTab } from "@/components/settings/tabs/BankConnectionsTab";
 import { AppearanceTab } from "@/components/settings/tabs/AppearanceTab";
+import { IncomeSourcesTab } from "@/components/settings/tabs/IncomeSourcesTab";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -66,7 +67,7 @@ export default function SettingsPage() {
               {activeTab === "profile" && <ProfileTab />}
               {activeTab === "banks" && <BankConnectionsTab />}
               {activeTab === "appearance" && <AppearanceTab />}
-              {activeTab === "income" && <div>Income Sources Settings</div>}
+              {activeTab === "income" && <IncomeSourcesTab />}
               {activeTab === "security" && <div>Security Settings</div>}
             </motion.div>
           </AnimatePresence>

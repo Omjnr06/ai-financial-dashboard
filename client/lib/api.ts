@@ -34,3 +34,14 @@ export async function apiPatch<T>(path: string, body: unknown, mock: T): Promise
   if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
   return res.json();
 }
+
+// mock wrapper for delete
+export async function apiDelete<T>(path: string, mock: T): Promise<T> {
+  if (USE_MOCKS) return mock;
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
+  return res.json();
+}
