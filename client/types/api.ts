@@ -61,7 +61,6 @@ export interface Account {
   currentBalanceToCent: number;
   availableBalanceToCent: number | null;
   limitToCent: number | null;
-  status: Status;
 }
 
 
