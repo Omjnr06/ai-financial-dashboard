@@ -16,6 +16,7 @@ from app.routes.anomalies import router as anomalies_router
 from app.routes.habits import router as habits_router
 from app.routes.assistant import router as assistant_router
 from app.routes.profile import router as profile_router
+from app.routes.account import router as account_router
 
 # to run locally
 # uv run uvicorn main:app --reload
@@ -78,3 +79,6 @@ app.include_router(assistant_router)
 
 # profile updater route
 app.include_router(profile_router)
+
+# local user account route (deletion)
+app.include_router(account_router)

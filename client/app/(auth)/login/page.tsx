@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent, Suspense } from "react";
+import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
@@ -55,6 +55,9 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
 
   const handleChange = (field: keyof FormState) => (value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -63,7 +66,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setServerError(null);
 
@@ -73,7 +76,7 @@ export default function LoginPage() {
 
     setIsSubmitting(true);
     try {
-      const { error } = await authClient.signIn.email({
+      const { data, error } = await authClient.signIn.email({
         email: form.email.trim(),
         password: form.password,
       });
@@ -83,9 +86,37 @@ export default function LoginPage() {
         return;
       }
 
+      if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect) {
+        setRequiresTwoFactor(true);
+        return;
+      }
+
       router.push("/dashboard");
     } catch {
-      setServerError("Incorrect email or password.");
+      setServerError("An unexpected error occurred.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setServerError(null);
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await authClient.twoFactor.verifyTotp({
+        code: otpCode,
+      });
+
+      if (error) {
+        setServerError("Invalid or expired code.");
+        return;
+      }
+
+      router.push("/dashboard");
+    } catch {
+      setServerError("An unexpected error occurred.");
     } finally {
       setIsSubmitting(false);
     }
@@ -95,7 +126,7 @@ export default function LoginPage() {
     <main className="min-h-screen bg-surface flex items-center justify-center px-4">
       <div className="w-full max-w-md bg-surface-raised rounded-xl p-8">
         <h1 className="text-2xl font-semibold text-primary mb-6">
-          Welcome back
+          {requiresTwoFactor ? "Two-Factor Authentication" : "Welcome back"}
         </h1>
 
         <Suspense fallback={null}>
@@ -111,46 +142,68 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          <Input
-            label="Email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={form.email}
-            onChange={(e) => handleChange("email")(e.target.value)}
-            error={errors.email}
-            disabled={isSubmitting}
-          />
-          <Input
-            label="Password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={form.password}
-            onChange={(e) => handleChange("password")(e.target.value)}
-            error={errors.password}
-            disabled={isSubmitting}
-          />
+        {!requiresTwoFactor ? (
+          <form onSubmit={handleLoginSubmit} noValidate className="space-y-4">
+            <Input
+              label="Email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={form.email}
+              onChange={(e) => handleChange("email")(e.target.value)}
+              error={errors.email}
+              disabled={isSubmitting}
+            />
+            <Input
+              label="Password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              value={form.password}
+              onChange={(e) => handleChange("password")(e.target.value)}
+              error={errors.password}
+              disabled={isSubmitting}
+            />
 
-          <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
-            {isSubmitting ? "Signing in..." : "Sign In"}
-          </Button>
-        </form>
+            <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
+              {isSubmitting ? "Signing in..." : "Sign In"}
+            </Button>
+          </form>
+        ) : (
+          <form onSubmit={handleOtpSubmit} noValidate className="space-y-4">
+            <p className="text-sm text-text-muted mb-4">
+              Open your authenticator app and enter the 6-digit code to continue.
+            </p>
+            <Input
+              label="Authenticator Code"
+              name="totp"
+              type="text"
+              autoComplete="one-time-code"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value)}
+              disabled={isSubmitting}
+            />
+            <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
+              {isSubmitting ? "Verifying..." : "Verify Code"}
+            </Button>
+          </form>
+        )}
 
-        <p className="mt-6 text-center text-sm text-muted space-y-1">
-          <span className="block">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-accent hover:underline">
-              Sign up
-            </Link>
-          </span>
-          <span className="block">
-            <Link href="/forgot-password" className="text-accent hover:underline">
-              Forgot password?
-            </Link>
-          </span>
-        </p>
+        {!requiresTwoFactor && (
+          <p className="mt-6 text-center text-sm text-muted space-y-1">
+            <span className="block">
+              Don&apos;t have an account?{" "}
+              <Link href="/signup" className="text-accent hover:underline">
+                Sign up
+              </Link>
+            </span>
+            <span className="block">
+              <Link href="/forgot-password" className="text-accent hover:underline">
+                Forgot password?
+              </Link>
+            </span>
+          </p>
+        )}
       </div>
     </main>
   );
