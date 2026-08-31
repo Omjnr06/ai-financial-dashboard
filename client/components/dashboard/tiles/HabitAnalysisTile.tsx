@@ -2,12 +2,10 @@
 
 import React from "react";
 import { Sparkles } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiGet } from "@/lib/api";
+import { mockHabits } from "@/mocks";
 import { HabitProfile } from "@/types/api";
-
-interface HabitAnalysisTileProps {
-  habits: HabitProfile | null;
-  isLoading: boolean;
-}
 
 // varied openers so the insight doesn't read the same every time
 const OPENERS = [
@@ -29,7 +27,14 @@ function dominantCategory(habits: HabitProfile): string | null {
   return entries[0][0];
 }
 
-export function HabitAnalysisTile({ habits, isLoading }: HabitAnalysisTileProps) {
+export function HabitAnalysisTile() {
+  const { data: habits, isLoading } = useQuery({
+    queryKey: ["habits"],
+    queryFn: async () => {
+      return await apiGet<HabitProfile>("/api/habits", mockHabits);
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle animate-pulse h-full min-h-40">

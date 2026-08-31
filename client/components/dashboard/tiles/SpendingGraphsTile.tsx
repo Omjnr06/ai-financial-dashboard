@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { BarChart3 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/lib/api";
 import { mockSpendSummary } from "@/mocks";
 import { useDashboardStore } from "@/stores/useDashboardStore";
@@ -45,25 +46,17 @@ export function SpendingGraphsTile({ habits, buckets, isLoading }: SpendingGraph
   const [viewState, setViewState] = useState<ViewId | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  const [summary, setSummary] = useState<SpendSummary | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(true);
-
   // self-fetch pre-aggregated spend rollups; refetch when the account changes
-  useEffect(() => {
-    let cancelled = false;
-    setSummaryLoading(true);
-    const qs = selectedAccountId ? `?accountId=${selectedAccountId}` : "";
-    apiGet<SpendSummary>(
-      `/api/transactions/summary${qs}`,
-      mockSpendSummary(selectedAccountId)
-    )
-      .then((res) => !cancelled && setSummary(res))
-      .catch(() => !cancelled && setSummary(null))
-      .finally(() => !cancelled && setSummaryLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedAccountId]);
+  const { data: summary, isLoading: summaryLoading } = useQuery({
+    queryKey: ["spendSummary", selectedAccountId],
+    queryFn: async () => {
+      const qs = selectedAccountId ? `?accountId=${selectedAccountId}` : "";
+      return await apiGet<SpendSummary>(
+        `/api/transactions/summary${qs}`,
+        mockSpendSummary(selectedAccountId)
+      );
+    },
+  });
 
   // map server rollups -> existing view prop shapes (dollars)
   const spendingData = useMemo(() => {

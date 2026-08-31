@@ -3,8 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Home, ArrowLeftRight, PiggyBank, MessageSquare, Settings, LayoutGrid } from "lucide-react";
-import { useThemeStore } from "@/stores/useThemeStore";
+import { Home, ArrowLeftRight, PiggyBank, MessageSquare, Settings } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 interface VerticalLayoutProps {
@@ -21,14 +20,13 @@ const navItems = [
 ];
 
 export function VerticalLayout({ children, onOpenChat }: VerticalLayoutProps) {
-  const { setLayout } = useThemeStore();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-   const pathname = usePathname();
+  const pathname = usePathname();
 
   return (
     <div className="min-h-screen bg-surface text-text-primary p-4 md:p-8 flex flex-col md:flex-row gap-6">
       {/* Desktop Vertical Icon Rail */}
-      <aside className="hidden md:flex flex-col items-center justify-between bg-surface-raised border border-border-subtle p-4 rounded-3xl w-20 relative z-30 shadow-xl">
+      <aside className="hidden md:flex flex-col items-center bg-surface-raised border border-border-subtle p-4 rounded-3xl w-20 relative z-30 shadow-xl">
         <div className="space-y-6 flex flex-col items-center">
           {navItems.map((item, idx) => {
             const Icon = item.icon;
@@ -61,7 +59,6 @@ export function VerticalLayout({ children, onOpenChat }: VerticalLayoutProps) {
                   </Link>
                 )}
 
-                {/* Animated Framer Motion Tooltip Label */}
                 {hoveredIdx === idx && (
                   <motion.div
                     initial={{ opacity: 0, x: -10 }}
@@ -77,14 +74,6 @@ export function VerticalLayout({ children, onOpenChat }: VerticalLayoutProps) {
             );
           })}
         </div>
-
-        <button
-          onClick={() => setLayout("horizontal")}
-          aria-label="Switch to Horizontal Layout"
-          className="p-3 rounded-2xl hover:bg-surface text-text-muted hover:text-text-primary transition-colors"
-        >
-          <LayoutGrid className="w-5 h-5" />
-        </button>
       </aside>
 
       {/* Main Content Area */}

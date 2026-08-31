@@ -3,6 +3,10 @@
 import React from "react";
 import { formatCents } from "@/lib/format";
 import { ArrowLeftRight, Utensils, ShoppingBag, ArrowDownLeft } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiGet } from "@/lib/api";
+import { mockTransactionsPage } from "@/mocks";
+import { useDashboardStore } from "@/stores/useDashboardStore";
 
 interface Transaction {
   id: string;
@@ -11,15 +15,24 @@ interface Transaction {
   dateOf: string;
 }
 
-interface LastTransactionsTileProps {
-  transactions: Transaction[];
-  isLoading: boolean;
-}
-
 // /api/transactions uses Plaid convention: spending POSITIVE, money-in NEGATIVE.
 const isSpend = (cent: number) => cent > 0;
 
-export function LastTransactionsTile({ transactions, isLoading }: LastTransactionsTileProps) {
+export function LastTransactionsTile() {
+  const selectedAccountId = useDashboardStore((s) => s.selectedAccountId);
+
+  const { data: transactions = [], isLoading } = useQuery({
+    queryKey: ["recentTransactions", selectedAccountId],
+    queryFn: async () => {
+      const qs = selectedAccountId ? `&accountId=${selectedAccountId}` : "";
+      const res = await apiGet<any>(
+        `/api/transactions?limit=5${qs}`,
+        mockTransactionsPage(5, 0)
+      );
+      return res?.items as Transaction[] ?? [];
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="bg-surface-raised rounded-3xl p-6 border border-border-subtle animate-pulse h-full min-h-35">
