@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 import { randomUUID } from "crypto";
 import { Resend } from "resend";
+import { twoFactor } from "better-auth/plugins";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -62,7 +63,12 @@ export const auth = betterAuth({
   },
 
   user: { modelName: "ba_user" },
-  session: { modelName: "ba_session" },
+  session: {
+  modelName: "ba_session",
+  expiresIn: 60 * 60 * 24 * 7, // week expiration
+  updateAge: 60 * 60 * 24, // day update
+  freshAge: 0, // explicit freshness not required, building custom auth gate
+},
   account: { modelName: "ba_account" },
   verification: { modelName: "ba_verification" },
 
@@ -79,4 +85,8 @@ export const auth = betterAuth({
       },
     },
   },
+
+  plugins: [
+    twoFactor(),
+  ],
 });
