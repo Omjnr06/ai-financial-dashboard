@@ -6,28 +6,29 @@ from app.services.assistant.nlu.intents import INTENTS
 # reduce or increase this number to tighten the confidence of what model thinks user is asking
 CONFIDENCE_THRESHOLD = 0.45
 
-# builds matrix based on example phrases x example intent
-# run, then each question checked where vector is on matrix or how close
-# highest score then wins
+# builds matrix based on example phrases x example intent, lazily on first use so
+# the embedding model is never loaded at import/boot (keeps idle memory low)
 
-_example_texts: list[str] = []
 _example_labels: list[str] = []
 _example_matrix: np.ndarray | None = None
 
 
-def _build() -> None:
+def _ensure_built() -> None:
     global _example_matrix
+    if _example_matrix is not None:
+        return
+    texts: list[str] = []
+    labels: list[str] = []
     for intent in INTENTS:
         for phrase in intent.examples:
-            _example_texts.append(phrase)
-            _example_labels.append(intent.name)
-    _example_matrix = embed(_example_texts)
-
-
-_build()
+            texts.append(phrase)
+            labels.append(intent.name)
+    _example_labels.extend(labels)
+    _example_matrix = embed(texts)
 
 
 def match(question: str) -> tuple[str | None, float]:
+    _ensure_built()
     query_vec = embed_one(question)
     sims = _example_matrix @ query_vec
     best_idx = int(np.argmax(sims))
@@ -35,18 +36,3 @@ def match(question: str) -> tuple[str | None, float]:
     if best_score < CONFIDENCE_THRESHOLD:
         return None, best_score
     return _example_labels[best_idx], best_score
-
-
-# if __name__ == "__main__":
-#     probes = [
-#         "how much did I spend on dining?",
-#         "what was my biggest purchase this month?",
-#         "when will I afford my new laptop?",
-#         "what's safe to spend this week?",
-#         "what's my net worth?",
-#         "what are my spending habits?",
-#         "what's the weather?",
-#     ]
-#     for q in probes:
-#         name, score = match(q)
-#         print(f"{score:.3f}  {name or 'UNKNOWN':<22}  {q}")
