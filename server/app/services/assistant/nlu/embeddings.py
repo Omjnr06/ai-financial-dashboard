@@ -1,21 +1,26 @@
 import numpy as np
-from fastembed import TextEmbedding
+from openai import OpenAI
 
-# file to represent user input text as vector to put similar sentences with near same meaning near each other
-_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-_model: TextEmbedding | None = None
+from app.core.config import settings
+
+# represents text as vectors via OpenAI's embedding API (no local model loaded).
+# same downstream use: cosine similarity against precomputed intent vectors.
+
+_MODEL_NAME = "text-embedding-3-small"
+_client: OpenAI | None = None
 
 
-def _get_model() -> TextEmbedding:
-    global _model
-    if _model is None:
-        _model = TextEmbedding(model_name=_MODEL_NAME)
-    return _model
+def _get_client() -> OpenAI:
+    global _client
+    if _client is None:
+        _client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    return _client
 
 
 def embed(texts: list[str]) -> np.ndarray:
-    model = _get_model()
-    vectors = np.array(list(model.embed(texts)), dtype=np.float32)
+    client = _get_client()
+    resp = client.embeddings.create(model=_MODEL_NAME, input=texts)
+    vectors = np.array([d.embedding for d in resp.data], dtype=np.float32)
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms[norms == 0] = 1.0
     return vectors / norms
