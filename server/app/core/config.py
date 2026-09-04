@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     PLAID_ENV: str = "sandbox"
     PLAID_WEBHOOK_URL: str
     TOKEN_ENCRYPTION_KEY: str
+    OPENAI_API_KEY: str
 
 
 settings = Settings()
